@@ -1,14 +1,14 @@
 {
   "files": {
     "main.css": "/abfahrten/static/css/main.1d3a077e.css",
-    "main.js": "/abfahrten/static/js/main.795ac2e7.js",
+    "main.js": "/abfahrten/static/js/main.dde201be.js",
     "static/media/DotMatrix.ttf": "/abfahrten/static/media/DotMatrix.60986248129f8a5d7fb1.ttf",
     "index.html": "/abfahrten/index.html",
     "main.1d3a077e.css.map": "/abfahrten/static/css/main.1d3a077e.css.map",
-    "main.795ac2e7.js.map": "/abfahrten/static/js/main.795ac2e7.js.map"
+    "main.dde201be.js.map": "/abfahrten/static/js/main.dde201be.js.map"
   },
   "entrypoints": [
     "static/css/main.1d3a077e.css",
-    "static/js/main.795ac2e7.js"
+    "static/js/main.dde201be.js"
   ]
 }
