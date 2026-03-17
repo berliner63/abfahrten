@@ -166,3 +166,53 @@ setInterval(loadData, 10000);
 
 </body>
 </html>
+                <td>${Math.round(nearest.dist)} m</td>
+                <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        return;
+    }
+
+    // 5. Fallback: Fahrplan-Daten (keine Live-Daten)
+    status.textContent = "Keine Live-Daten – Fahrplan wird angezeigt";
+    status.className = "fallback";
+
+    try {
+        const depRes = await fetch("https://v6.bvg.transport.rest/stops/900170001/departures?duration=60");
+        const depData = await depRes.json();
+
+        const m6 = depData.filter(d => d.line?.name === "M6");
+
+        if (m6.length === 0) {
+            tableBody.innerHTML = "<tr><td colspan='5'>Keine M6-Fahrten gefunden.</td></tr>";
+            return;
+        }
+
+        m6.forEach(d => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>–</td>
+                <td>${d.direction}</td>
+                <td>${d.stop.name}</td>
+                <td>–</td>
+                <td>${d.delay ? (d.delay/60).toFixed(1) + " min" : "0 min"}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+    } catch {
+        tableBody.innerHTML = "<tr><td colspan='5'>Fehler beim Laden der Fahrplan-Daten.</td></tr>";
+    }
+}
+
+// Initial laden
+loadData();
+
+// Alle 10 Sekunden aktualisieren
+setInterval(loadData, 10000);
+</script>
+
+</body>
+</html>
