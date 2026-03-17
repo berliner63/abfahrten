@@ -9,9 +9,15 @@
         margin: 20px;
         background: #f5f5f5;
     }
-    h1 {
-        margin-bottom: 10px;
+    h1 { margin-bottom: 5px; }
+    #status {
+        padding: 8px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+        font-weight: bold;
     }
+    .live { background: #c8f7c5; border: 1px solid #4caf50; }
+    .fallback { background: #fff3cd; border: 1px solid #ffca2c; }
     table {
         width: 100%;
         border-collapse: collapse;
@@ -22,15 +28,13 @@
         border-bottom: 1px solid #ddd;
         text-align: left;
     }
-    th {
-        background: #eee;
-    }
+    th { background: #eee; }
 </style>
 </head>
 <body>
 
 <h1>M6 – Live Positionen</h1>
-<p>Zeigt, an welcher Haltestelle sich die M6 gerade befindet (Radar‑API).</p>
+<div id="status">Lade Daten…</div>
 
 <table id="m6table">
     <thead>
@@ -46,7 +50,7 @@
 </table>
 
 <script>
-// Haversine-Distanzberechnung
+// Haversine-Distanz
 function distance(a, b) {
     const R = 6371e3;
     const toRad = x => x * Math.PI / 180;
@@ -62,49 +66,95 @@ function distance(a, b) {
 }
 
 async function loadData() {
+    const status = document.getElementById("status");
     const tableBody = document.querySelector("#m6table tbody");
     tableBody.innerHTML = "<tr><td colspan='5'>Lade Daten…</td></tr>";
 
     // 1. Haltestellen der M6 laden
-    const lineRes = await fetch("https://v6.bvg.transport.rest/lines?query=M6");
-    const lineData = await lineRes.json();
-    const stops = lineData[0].routes[0].stops;
+    let stops;
+    try {
+        const lineRes = await fetch("https://v6.bvg.transport.rest/lines?query=M6");
+        const lineData = await lineRes.json();
+        stops = lineData[0].routes[0].stops;
+    } catch {
+        status.textContent = "Fehler: Haltestellen konnten nicht geladen werden.";
+        status.className = "fallback";
+        return;
+    }
 
-    // 2. Radar-Daten laden (Metro-Tram)
-    const radarRes = await fetch(
-        "https://v6.bvg.transport.rest/radar?products=metro&north=52.60&south=52.48&east=13.70&west=13.45"
-    );
-    const radarData = await radarRes.json();
+    // 2. Radar-Daten laden
+    let radarData = [];
+    try {
+        const radarRes = await fetch(
+            "https://v6.bvg.transport.rest/radar?products=metro&north=52.60&south=52.48&east=13.70&west=13.45"
+        );
+        radarData = await radarRes.json();
+    } catch {
+        radarData = [];
+    }
 
-    // 3. Nur M6-Fahrzeuge filtern
+    // 3. Nur M6-Fahrzeuge
     const m6Vehicles = radarData.filter(v => v.line?.name === "M6");
 
     tableBody.innerHTML = "";
 
-    if (m6Vehicles.length === 0) {
-        tableBody.innerHTML = "<tr><td colspan='5'>Keine M6-Fahrzeuge im Radar gefunden.</td></tr>";
+    // 4. Wenn Live-Daten verfügbar sind
+    if (m6Vehicles.length > 0) {
+        status.textContent = "Live-Daten aktiv";
+        status.className = "live";
+
+        m6Vehicles.forEach(v => {
+            const nearest = stops
+                .map(stop => ({
+                    stop,
+                    dist: distance(v.location, stop.location)
+                }))
+                .sort((a,b) => a.dist - b.dist)[0];
+
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${v.tripId || "–"}</td>
+                <td>${v.direction || "–"}</td>
+                <td>${nearest.stop.name}</td>
+                <td>${Math.round(nearest.dist)} m</td>
+                <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
         return;
     }
 
-    // 4. Für jedes Fahrzeug die nächste Haltestelle finden
-    m6Vehicles.forEach(v => {
-        const nearest = stops
-            .map(stop => ({
-                stop,
-                dist: distance(v.location, stop.location)
-            }))
-            .sort((a,b) => a.dist - b.dist)[0];
+    // 5. Fallback: Fahrplan-Daten (keine Live-Daten)
+    status.textContent = "Keine Live-Daten – Fahrplan wird angezeigt";
+    status.className = "fallback";
 
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td>${v.tripId || "–"}</td>
-            <td>${v.direction || "–"}</td>
-            <td>${nearest.stop.name}</td>
-            <td>${Math.round(nearest.dist)} m</td>
-            <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
-        `;
-        tableBody.appendChild(row);
-    });
+    try {
+        const depRes = await fetch("https://v6.bvg.transport.rest/stops/900170001/departures?duration=60");
+        const depData = await depRes.json();
+
+        const m6 = depData.filter(d => d.line?.name === "M6");
+
+        if (m6.length === 0) {
+            tableBody.innerHTML = "<tr><td colspan='5'>Keine M6-Fahrten gefunden.</td></tr>";
+            return;
+        }
+
+        m6.forEach(d => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>–</td>
+                <td>${d.direction}</td>
+                <td>${d.stop.name}</td>
+                <td>–</td>
+                <td>${d.delay ? (d.delay/60).toFixed(1) + " min" : "0 min"}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+    } catch {
+        tableBody.innerHTML = "<tr><td colspan='5'>Fehler beim Laden der Fahrplan-Daten.</td></tr>";
+    }
 }
 
 // Initial laden
