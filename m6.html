@@ -6,121 +6,197 @@
 <style>
     body {
         font-family: Arial, sans-serif;
-        margin: 20px;
-        background: #f5f5f5;
-    }
-    h1 { margin-bottom: 5px; }
-    #status {
-        padding: 8px;
-        margin-bottom: 15px;
-        border-radius: 5px;
-        font-weight: bold;
-    }
-    .live { background: #c8f7c5; border: 1px solid #4caf50; }
-    .fallback { background: #fff3cd; border: 1px solid #ffca2c; }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-    }
-    th, td {
-        padding: 8px;
-        border-bottom: 1px solid #ddd;
-        text-align: left;
-    }
-    th { background: #eee; }
-</style>
-</head>
-<body>
+        <!DOCTYPE html>
+        <html lang="de">
+        <head>
+        <meta charset="UTF-8">
+        <title>M6 – Live Positionen</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background: #f5f5f5;
+            }
+            h1 { margin-bottom: 5px; }
+            #status {
+                padding: 8px;
+                margin-bottom: 15px;
+                border-radius: 5px;
+                font-weight: bold;
+            }
+            .live { background: #c8f7c5; border: 1px solid #4caf50; }
+            .fallback { background: #fff3cd; border: 1px solid #ffca2c; }
+            .error { background: #f8d7da; border: 1px solid #f5c2c7; }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                background: white;
+            }
+            th, td {
+                padding: 8px;
+                border-bottom: 1px solid #ddd;
+                text-align: left;
+            }
+            th { background: #eee; }
+        </style>
+        </head>
+        <body>
 
-<h1>M6 – Live Positionen</h1>
-<div id="status">Lade Daten…</div>
+        <h1>M6 – Live Positionen</h1>
+        <div id="status">Lade Daten…</div>
 
-<table id="m6table">
-    <thead>
-        <tr>
-            <th>Fahrzeug</th>
-            <th>Richtung</th>
-            <th>Nächste Haltestelle</th>
-            <th>Entfernung</th>
-            <th>Verspätung</th>
-        </tr>
-    </thead>
-    <tbody></tbody>
-</table>
+        <table id="m6table">
+            <thead>
+                <tr>
+                    <th>Fahrzeug</th>
+                    <th>Richtung</th>
+                    <th>Nächste Haltestelle</th>
+                    <th>Entfernung</th>
+                    <th>Verspätung</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
 
-<script>
-// Haversine-Distanz
-function distance(a, b) {
-    const R = 6371e3;
-    const toRad = x => x * Math.PI / 180;
-    const dLat = toRad(b.latitude - a.latitude);
-    const dLon = toRad(b.longitude - a.longitude);
-    const lat1 = toRad(a.latitude);
-    const lat2 = toRad(b.latitude);
+        <script>
+        // Haversine-Distanz
+        function distance(a, b) {
+            const R = 6371e3;
+            const toRad = x => x * Math.PI / 180;
+            const dLat = toRad(b.latitude - a.latitude);
+            const dLon = toRad(b.longitude - a.longitude);
+            const lat1 = toRad(a.latitude);
+            const lat2 = toRad(b.latitude);
 
-    const h = Math.sin(dLat/2)**2 +
-              Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+            const h = Math.sin(dLat/2)**2 +
+                      Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
 
-    return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
-}
+            return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
+        }
 
-async function loadData() {
-    const status = document.getElementById("status");
-    const tableBody = document.querySelector("#m6table tbody");
-    tableBody.innerHTML = "<tr><td colspan='5'>Lade Daten…</td></tr>";
+        async function loadData() {
+            const status = document.getElementById("status");
+            const tableBody = document.querySelector("#m6table tbody");
+            tableBody.innerHTML = "<tr><td colspan='5'>Lade Daten…</td></tr>";
 
-    // 1. Haltestellen der M6 laden
-    let stops;
-    try {
-        const lineRes = await fetch("https://v6.bvg.transport.rest/lines?query=M6");
-        const lineData = await lineRes.json();
-        stops = lineData[0].routes[0].stops;
-    } catch {
-        status.textContent = "Fehler: Haltestellen konnten nicht geladen werden.";
-        status.className = "fallback";
-        return;
-    }
+            // 1. Haltestellen der M6 laden (mit Routen!)
+            let stops;
+            try {
+                const lineRes = await fetch("https://v6.bvg.transport.rest/lines?query=M6&includeRoutes=true");
+                if (!lineRes.ok) throw new Error("HTTP " + lineRes.status);
+                const lineData = await lineRes.json();
+                if (!Array.isArray(lineData) || !lineData[0] || !lineData[0].routes || !lineData[0].routes[0]) {
+                    throw new Error("Keine Routen für M6 gefunden");
+                }
+                stops = lineData[0].routes[0].stops;
+                if (!Array.isArray(stops) || stops.length === 0) {
+                    throw new Error("Keine Haltestellen in der Route");
+                }
+            } catch (e) {
+                status.textContent = "Fehler: Haltestellen konnten nicht geladen werden (" + e.message + ").";
+                status.className = "error";
+                tableBody.innerHTML = "<tr><td colspan='5'>Keine Daten verfügbar.</td></tr>";
+                return;
+            }
 
-    // 2. Radar-Daten laden
-    let radarData = [];
-    try {
-        const radarRes = await fetch(
-            "https://v6.bvg.transport.rest/radar?products=metro&north=52.60&south=52.48&east=13.70&west=13.45"
-        );
-        radarData = await radarRes.json();
-    } catch {
-        radarData = [];
-    }
+            // 2. Radar-Daten laden
+            let radarData = [];
+            try {
+                const radarRes = await fetch(
+                    "https://v6.bvg.transport.rest/radar?products=metro&north=52.60&south=52.48&east=13.70&west=13.45"
+                );
+                if (radarRes.ok) {
+                    radarData = await radarRes.json();
+                }
+            } catch {
+                radarData = [];
+            }
 
-    // 3. Nur M6-Fahrzeuge
-    const m6Vehicles = radarData.filter(v => v.line?.name === "M6");
+            // 3. Nur M6-Fahrzeuge
+            const m6Vehicles = Array.isArray(radarData)
+                ? radarData.filter(v => v.line && v.line.name === "M6")
+                : [];
 
-    tableBody.innerHTML = "";
+            tableBody.innerHTML = "";
 
-    // 4. Wenn Live-Daten verfügbar sind
-    if (m6Vehicles.length > 0) {
-        status.textContent = "Live-Daten aktiv";
-        status.className = "live";
+            // 4. Wenn Live-Daten verfügbar sind
+            if (m6Vehicles.length > 0) {
+                status.textContent = "Live-Daten aktiv";
+                status.className = "live";
 
-        m6Vehicles.forEach(v => {
-            const nearest = stops
-                .map(stop => ({
-                    stop,
-                    dist: distance(v.location, stop.location)
-                }))
-                .sort((a,b) => a.dist - b.dist)[0];
+                m6Vehicles.forEach(v => {
+                    if (!v.location) return;
+                    const nearest = stops
+                        .map(stop => ({
+                            stop,
+                            dist: distance(
+                                { latitude: v.location.latitude, longitude: v.location.longitude },
+                                { latitude: stop.location.latitude, longitude: stop.location.longitude }
+                            )
+                        }))
+                        .sort((a,b) => a.dist - b.dist)[0];
 
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${v.tripId || "–"}</td>
-                <td>${v.direction || "–"}</td>
-                <td>${nearest.stop.name}</td>
-                <td>${Math.round(nearest.dist)} m</td>
-                <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
-            `;
-            tableBody.appendChild(row);
-        });
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${v.tripId || "–"}</td>
+                        <td>${v.direction || "–"}</td>
+                        <td>${nearest?.stop?.name || "–"}</td>
+                        <td>${nearest ? Math.round(nearest.dist) + " m" : "–"}</td>
+                        <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                return;
+            }
+
+            // 5. Fallback: Fahrplan-Daten (keine Live-Daten)
+            status.textContent = "Keine Live-Daten – Fahrplan wird angezeigt";
+            status.className = "fallback";
+
+            try {
+                // Beispiel: U Hellersdorf (ID ggf. anpassen)
+                const depRes = await fetch("https://v6.bvg.transport.rest/stops/900170001/departures?duration=60");
+                if (!depRes.ok) throw new Error("HTTP " + depRes.status);
+                const depData = await depRes.json();
+
+                const m6 = Array.isArray(depData)
+                    ? depData.filter(d => d.line && d.line.name === "M6")
+                    : [];
+
+                if (m6.length === 0) {
+                    tableBody.innerHTML = "<tr><td colspan='5'>Keine M6-Fahrten im Fahrplan gefunden.</td></tr>";
+                    return;
+                }
+
+                m6.forEach(d => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>–</td>
+                        <td>${d.direction || "–"}</td>
+                        <td>${d.stop?.name || "–"}</td>
+                        <td>–</td>
+                        <td>${d.delay ? (d.delay/60).toFixed(1) + " min" : "0 min"}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+            } catch (e) {
+                status.textContent = "Fehler beim Laden der Fahrplan-Daten (" + e.message + ").";
+                status.className = "error";
+                tableBody.innerHTML = "<tr><td colspan='5'>Keine Daten verfügbar.</td></tr>";
+            }
+        }
+
+        // Initial laden
+        loadData();
+
+        // Alle 10 Sekunden aktualisieren
+        setInterval(loadData, 10000);
+        </script>
+
+        </body>
+        </html>
 
         return;
     }
