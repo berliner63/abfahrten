@@ -52,17 +52,21 @@ async function loadData() {
     const tableBody = document.querySelector("#t195table tbody");
     tableBody.innerHTML = "<tr><td colspan='5'>Lade Daten…</td></tr>";
 
-    // 1. Haltestellen der 195 laden
+    // 1. Haltestellen der 195 über Trip-API laden
     let stops;
     try {
-        const lineRes = await fetch("https://v6.bvg.transport.rest/lines?query=195&includeRoutes=true");
-        const lineData = await lineRes.json();
+        const tripRes = await fetch("https://v6.bvg.transport.rest/trips?lineName=195&results=1");
+        const tripData = await tripRes.json();
 
-        if (!lineData[0]?.routes?.[0]?.stops) {
-            throw new Error("Keine Routen verfügbar");
+        if (!tripData[0]?.stopovers) {
+            throw new Error("Keine Stopps verfügbar");
         }
 
-        stops = lineData[0].routes[0].stops;
+        stops = tripData[0].stopovers.map(s => ({
+            id: s.stop.id,
+            name: s.stop.name,
+            location: s.stop.location
+        }));
     } catch (e) {
         status.textContent = "Fehler: Haltestellen konnten nicht geladen werden.";
         status.className = "error";
@@ -70,7 +74,7 @@ async function loadData() {
         return;
     }
 
-    // 2. Radar-Daten laden (Bus!)
+    // 2. Radar-Daten laden (Bus)
     let radarData = [];
     try {
         const radarRes = await fetch(
