@@ -52,20 +52,20 @@ async function loadData() {
     const tableBody = document.querySelector("#u5table tbody");
     tableBody.innerHTML = "<tr><td colspan='5'>Lade Daten…</td></tr>";
 
-    // 1. Haltestellen der U5 über Trip-API laden
+    // 1. Haltestellen der U5 über includeStops laden
     let stops;
     try {
-        const tripRes = await fetch("https://v6.bvg.transport.rest/trips?lineName=U5&results=1");
-        const tripData = await tripRes.json();
+        const lineRes = await fetch("https://v6.bvg.transport.rest/lines?query=U5&includeStops=true");
+        const lineData = await lineRes.json();
 
-        if (!tripData[0]?.stopovers) {
+        if (!lineData[0]?.stops) {
             throw new Error("Keine Stopps verfügbar");
         }
 
-        stops = tripData[0].stopovers.map(s => ({
-            id: s.stop.id,
-            name: s.stop.name,
-            location: s.stop.location
+        stops = lineData[0].stops.map(s => ({
+            id: s.id,
+            name: s.name,
+            location: s.location
         }));
     } catch (e) {
         status.textContent = "Fehler: Stationen konnten nicht geladen werden.";
