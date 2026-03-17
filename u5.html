@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>U5 – Live Positionen</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f5f5f5;
+    }
+    h1 {
+        margin-bottom: 10px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+    }
+    th, td {
+        padding: 8px;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+    }
+    th {
+        background: #eee;
+    }
+</style>
+</head>
+<body>
+
+<h1>U5 – Live Positionen</h1>
+<p>Zeigt, an welcher Haltestelle sich die U5 gerade befindet (Radar‑API).</p>
+
+<table id="u5table">
+    <thead>
+        <tr>
+            <th>Fahrzeug</th>
+            <th>Richtung</th>
+            <th>Nächste Haltestelle</th>
+            <th>Entfernung</th>
+            <th>Verspätung</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+function distance(a, b) {
+    const R = 6371e3;
+    const toRad = x => x * Math.PI / 180;
+    const dLat = toRad(b.latitude - a.latitude);
+    const dLon = toRad(b.longitude - a.longitude);
+    const lat1 = toRad(a.latitude);
+    const lat2 = toRad(b.latitude);
+    const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
+}
+
+async function loadData() {
+    const tableBody = document.querySelector("#u5table tbody");
+    tableBody.innerHTML = "<tr><td colspan='5'>Lade Daten…</td></tr>";
+    const lineRes = await fetch("https://v6.bvg.transport.rest/lines?query=U5");
+    const lineData = await lineRes.json();
+    const stops = lineData[0].routes[0].stops;
+    const radarRes = await fetch(
+        "https://v6.bvg.transport.rest/radar?products=subway&north=52.60&south=52.48&east=13.70&west=13.45"
+    );
+    const radarData = await radarRes.json();
+    const u5Vehicles = radarData.filter(v => v.line?.name === "U5");
+    tableBody.innerHTML = "";
+    if (u5Vehicles.length === 0) {
+        tableBody.innerHTML = "<tr><td colspan='5'>Keine U5-Fahrzeuge im Radar gefunden.</td></tr>";
+        return;
+    }
+    u5Vehicles.forEach(v => {
+        const nearest = stops
+            .map(stop => ({ stop, dist: distance(v.location, stop.location) }))
+            .sort((a,b) => a.dist - b.dist)[0];
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${v.tripId || "–"}</td>
+            <td>${v.direction || "–"}</td>
+            <td>${nearest.stop.name}</td>
+            <td>${Math.round(nearest.dist)} m</td>
+            <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+loadData();
+setInterval(loadData, 10000);
+</script>
+
+</body>
+</html>
