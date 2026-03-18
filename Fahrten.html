@@ -177,7 +177,7 @@
     <button id="toggleControlsButton" class="toggle-controls" type="button">Suche ausblenden</button>
   </div>
   <div class="controls" id="searchControls">
-    <input id="stopQuery" type="text" value="U Hellersdorf" placeholder="Haltestelle suchen">
+    <input id="stopQuery" type="text" value="" placeholder="Haltestelle suchen">
     <button id="searchButton" type="button">Suchen</button>
     <select id="stopSelect" aria-label="Gefundene Haltestellen"></select>
     <button id="applyStopButton" type="button">Übernehmen</button>
@@ -375,7 +375,6 @@
       if (stopName) {
         selectedStopName = stopName;
       }
-      document.getElementById('stopQuery').value = selectedStopName;
     }
 
     function fillStopSelect(stops) {
@@ -575,6 +574,9 @@
     });
 
     readStopFromUrl();
+    document.getElementById('searchControls').style.display = 'none';
+    document.getElementById('toggleControlsButton').textContent = 'Suche einblenden';
+    document.getElementById('stopQuery').value = '';
     fillStopSelect([{ id: selectedStopId, name: selectedStopName }]);
     updatePageNote();
     loadDepartures();
