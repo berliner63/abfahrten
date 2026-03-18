@@ -8,6 +8,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Roboto Condensed', sans-serif; background: #000; color: #fff; }
+    .header-row {
+      width: 100%;
+      max-width: 720px;
+      margin: 24px auto 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .toggle-controls {
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 16px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    .toggle-controls:hover { background: #1b1b1b; }
     .controls { width: 100%; max-width: 720px; margin: 16px auto 0 auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .controls input, .controls select, .controls button {
       font-family: 'Roboto Condensed', sans-serif;
@@ -25,7 +44,7 @@
     th, td { border: 1px solid #333; padding: 12px 8px; text-align: left; color: #fff; }
     th { background: #111; }
     tr:nth-child(even) { background: #0d0d0d; }
-    h1 { text-align: center; margin-top: 30px; }
+    h1 { margin: 0; }
     .abweichung-zu-frueh { color: #d32f2f; font-weight: bold; }
     .abweichung-zu-spaet { color: #fbc02d; font-weight: bold; }
     .abweichung-puenktlich { color: #388e3c; font-weight: bold; }
@@ -36,8 +55,11 @@
   </style>
 </head>
 <body>
-  <h1 id="pageTitle">Abfahrtsanzeige U Hellersdorf (Berlin)</h1>
-  <div class="controls">
+  <div class="header-row">
+    <h1 id="pageTitle">U Hellersdorf (Berlin)</h1>
+    <button id="toggleControlsButton" class="toggle-controls" type="button">Suche ausblenden</button>
+  </div>
+  <div class="controls" id="searchControls">
     <input id="stopQuery" type="text" value="U Hellersdorf" placeholder="Haltestelle suchen">
     <button id="searchButton" type="button">Suchen</button>
     <select id="stopSelect" aria-label="Gefundene Haltestellen"></select>
@@ -68,7 +90,7 @@
     let selectedStopName = DEFAULT_STOP_NAME;
 
     function updateTitle() {
-      document.getElementById('pageTitle').textContent = `Abfahrtsanzeige ${selectedStopName}`;
+      document.getElementById('pageTitle').textContent = `${selectedStopName}`;
     }
 
     function updateUrl(stopId, stopName) {
@@ -211,8 +233,17 @@
       loadDepartures();
     }
 
+    function toggleSearchControls() {
+      const controls = document.getElementById('searchControls');
+      const button = document.getElementById('toggleControlsButton');
+      const isHidden = controls.style.display === 'none';
+      controls.style.display = isHidden ? 'flex' : 'none';
+      button.textContent = isHidden ? 'Suche ausblenden' : 'Suche einblenden';
+    }
+
     document.getElementById('searchButton').addEventListener('click', onSearchStops);
     document.getElementById('applyStopButton').addEventListener('click', onApplySelectedStop);
+    document.getElementById('toggleControlsButton').addEventListener('click', toggleSearchControls);
     document.getElementById('stopQuery').addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
         onSearchStops();
