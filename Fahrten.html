@@ -42,7 +42,7 @@
     .controls select { flex: 2 1 360px; }
     .controls button { cursor: pointer; }
     .controls button:hover { background: #1b1b1b; }
-    table { border-collapse: collapse; width: 100%; max-width: 720px; margin: 24px auto; background: #000; }
+    table { border-collapse: collapse; table-layout: fixed; width: 100%; max-width: 720px; margin: 24px auto; background: #000; }
     th, td { border: 1px solid #333; padding: 12px 8px; text-align: left; color: #fff; }
     th { background: #111; }
     tr:nth-child(even) { background: #0d0d0d; }
@@ -80,7 +80,7 @@
 
     @media (max-width: 1024px), (pointer: coarse) {
       body {
-        font-size: 22px;
+        font-size: 18px;
       }
 
       .header-row,
@@ -97,14 +97,14 @@
       }
 
       h1 {
-        font-size: clamp(30px, 8vw, 42px);
+        font-size: clamp(24px, 6.4vw, 32px);
         line-height: 1.1;
       }
 
       .toggle-controls {
         width: 100%;
-        font-size: 20px;
-        padding: 12px 14px;
+        font-size: 17px;
+        padding: 10px 12px;
       }
 
       .controls {
@@ -115,8 +115,8 @@
       .controls input,
       .controls select,
       .controls button {
-        font-size: 24px;
-        padding: 14px 16px;
+        font-size: 18px;
+        padding: 10px 12px;
       }
 
       .controls input,
@@ -131,9 +131,18 @@
 
       th,
       td {
-        font-size: 24px;
-        padding: 14px 10px;
+        font-size: 17px;
+        padding: 10px 8px;
       }
+
+      th:nth-child(1),
+      td:nth-child(1) { width: 14%; }
+      th:nth-child(2),
+      td:nth-child(2) { width: 50%; word-break: break-word; }
+      th:nth-child(3),
+      td:nth-child(3) { width: 20%; }
+      th:nth-child(4),
+      td:nth-child(4) { width: 16%; }
 
       .page-note {
         width: calc(100% - 16px);
@@ -144,7 +153,7 @@
       .data-status {
         width: calc(100% - 16px);
         max-width: none;
-        font-size: 16px;
+        font-size: 14px;
       }
 
       th:nth-child(3),
