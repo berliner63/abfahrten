@@ -172,16 +172,53 @@
   <div class="page-note" id="pageNote">Stand: wird geladen ...</div>
   
   <script>
-    const PAGE_VERSION = 'v2026-03-18-01';
-    const PAGE_CHANGED_AT = '18.03.2026 22:40';
+    const PAGE_VERSION = 'v2026-03-18-02';
+    const PAGE_CHANGED_AT_FALLBACK = '2026-03-18T23:10:00+01:00';
     const DEFAULT_STOP_ID = '900175007';
     const DEFAULT_STOP_NAME = 'U Hellersdorf (Berlin)';
     let selectedStopId = DEFAULT_STOP_ID;
     let selectedStopName = DEFAULT_STOP_NAME;
 
+    function getBerlinZoneLabel(date) {
+      try {
+        const zonePart = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Berlin',
+          timeZoneName: 'shortOffset',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+          .formatToParts(date)
+          .find((part) => part.type === 'timeZoneName');
+
+        const offset = zonePart ? zonePart.value : '';
+        if (offset.includes('+2')) return 'MESZ';
+        if (offset.includes('+1')) return 'MEZ';
+      } catch (e) {
+        return 'MEZ/MESZ';
+      }
+
+      return 'MEZ/MESZ';
+    }
+
+    function formatBerlinTimestamp(date) {
+      const formatted = new Intl.DateTimeFormat('de-DE', {
+        timeZone: 'Europe/Berlin',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(date);
+
+      return `${formatted} ${getBerlinZoneLabel(date)}`;
+    }
+
     function updatePageNote() {
-      const modified = document.lastModified ? `, Browser-Stand: ${document.lastModified}` : '';
-      document.getElementById('pageNote').textContent = `Letzte Aenderung: ${PAGE_CHANGED_AT} (${PAGE_VERSION}${modified})`;
+      const parsedLastModified = document.lastModified ? new Date(document.lastModified) : null;
+      const fallbackDate = new Date(PAGE_CHANGED_AT_FALLBACK);
+      const sourceDate = parsedLastModified && !Number.isNaN(parsedLastModified.getTime()) ? parsedLastModified : fallbackDate;
+      document.getElementById('pageNote').textContent = `Letzte Aenderung: ${formatBerlinTimestamp(sourceDate)} (${PAGE_VERSION})`;
     }
 
     function updateTitle() {
