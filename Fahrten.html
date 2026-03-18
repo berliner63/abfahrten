@@ -349,6 +349,11 @@
       selectedStopId = option.value;
       selectedStopName = option.dataset.name || option.textContent;
       updateUrl(selectedStopId, selectedStopName);
+      document.getElementById('stopQuery').value = '';
+      const controls = document.getElementById('searchControls');
+      const toggleButton = document.getElementById('toggleControlsButton');
+      controls.style.display = 'none';
+      toggleButton.textContent = 'Suche einblenden';
       loadDepartures();
     }
 
