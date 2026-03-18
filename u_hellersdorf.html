@@ -91,17 +91,18 @@
       const departures = await getDepartures(stopId);
       loader.style.display = 'none';
       table.style.display = 'block';
-      if (!departures || departures.length === 0) {
+      let depList = Array.isArray(departures) ? departures : (departures && departures.departures ? departures.departures : []);
+      if (!depList || depList.length === 0) {
         debug.innerHTML += '<br><b>Debug:</b> Keine Abfahrten oder API-Fehler.<br>Rohdaten:<br><pre>' + JSON.stringify(departures, null, 2) + '</pre>';
         tbody.innerHTML = '<tr><td colspan="4">Keine Abfahrten gefunden oder API-Fehler</td></tr>';
         return;
       }
       debug.innerHTML += '<br><b>Debug:</b> Rohdaten:<br><pre>' + JSON.stringify(departures, null, 2) + '</pre>';
-      departures.forEach(dep => {
+      depList.forEach(dep => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${dep.line && dep.line.name ? dep.line.name : ''}</td>
-          <td>${dep.destination && dep.destination.name ? dep.destination.name : ''}</td>
+          <td>${dep.destination && dep.destination.name ? dep.destination.name : (dep.direction || '')}</td>
           <td>${dep.plannedWhen ? formatTime(dep.plannedWhen) : ''}</td>
           <td>${dep.when ? formatTime(dep.when) : ''}</td>
         `;
