@@ -112,7 +112,7 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${dep.line && dep.line.name ? dep.line.name : ''}</td>
-          <td>${dep.destination && dep.destination.name ? dep.destination.name : (dep.direction || '')}</td>
+          <td>${(dep.direction || '').replace(/->/g, '>')}</td>
           <td>${dep.plannedWhen ? formatTime(dep.plannedWhen) : ''}</td>
           <td>${dep.when ? formatTime(dep.when) : ''}</td>
           <td><span class="${abweichungClass}">${abweichungText}</span></td>
