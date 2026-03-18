@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Abfahrtsanzeige U Hellersdorf</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; }
+    table { border-collapse: collapse; width: 100%; max-width: 600px; margin: 40px auto; background: #fff; }
+    th, td { border: 1px solid #ccc; padding: 12px 8px; text-align: left; }
+    th { background: #e0e0e0; }
+    tr:nth-child(even) { background: #f2f2f2; }
+    h1 { text-align: center; margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <h1>Abfahrtsanzeige U Hellersdorf</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Linie</th>
+        <th>Ziel</th>
+        <th>Abfahrtszeit SOLL</th>
+        <th>Abfahrtszeit IST</th>
+      </tr>
+    </thead>
+    <tbody id="departures">
+      <!-- Dynamische Daten werden hier eingefügt -->
+    </tbody>
+  </table>
+  <script>
+    async function getStopId() {
+      const response = await fetch('https://v6.bvg.transport.rest/locations?query=U%20Hellersdorf');
+      const data = await response.json();
+      if (data && data.length > 0) {
+        return data[0].id;
+      }
+      return null;
+    }
+
+    async function getDepartures(stopId) {
+      const response = await fetch(`https://v6.bvg.transport.rest/stops/${stopId}/departures?duration=30`);
+      const data = await response.json();
+      return data;
+    }
+
+    function formatTime(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function loadDepartures() {
+      const stopId = await getStopId();
+      if (!stopId) {
+        document.getElementById('departures').innerHTML = '<tr><td colspan="4">Haltestellen-ID nicht gefunden</td></tr>';
+        return;
+      }
+      const departures = await getDepartures(stopId);
+      const tbody = document.getElementById('departures');
+      tbody.innerHTML = '';
+      if (!departures || departures.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">Keine Abfahrten gefunden</td></tr>';
+        return;
+      }
+      departures.forEach(dep => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${dep.line && dep.line.name ? dep.line.name : ''}</td>
+          <td>${dep.destination && dep.destination.name ? dep.destination.name : ''}</td>
+          <td>${dep.plannedWhen ? formatTime(dep.plannedWhen) : ''}</td>
+          <td>${dep.when ? formatTime(dep.when) : ''}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    loadDepartures();
+    setInterval(loadDepartures, 60000);
+  </script>
+</body>
+</html>
