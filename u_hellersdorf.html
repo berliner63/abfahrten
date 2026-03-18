@@ -14,7 +14,6 @@
 </head>
 <body>
   <h1>Abfahrtsanzeige U Hellersdorf</h1>
-  <div id="debug" style="max-width:600px;margin:0 auto 20px auto;font-size:13px;color:#555;background:#f9f9f9;border:1px solid #eee;padding:8px;display:none"></div>
   <div id="loader" style="text-align:center;margin:40px;">
     <span style="display:inline-block;width:40px;height:40px;border:4px solid #ccc;border-top:4px solid #333;border-radius:50%;animation:spin 1s linear infinite;"></span>
     <div style="margin-top:10px;color:#888;">Lade Abfahrten...</div>
@@ -26,11 +25,15 @@
         <th>Ziel</th>
         <th>Abfahrtszeit SOLL</th>
         <th>Abfahrtszeit IST</th>
+        <th>Abweichung</th>
       </tr>
     </thead>
     <tbody id="departures">
       <!-- Dynamische Daten werden hier eingefügt -->
     </tbody>
+    .abweichung-zu-frueh { color: #d32f2f; font-weight: bold; }
+    .abweichung-zu-spaet { color: #fbc02d; font-weight: bold; }
+    .abweichung-puenktlich { color: #388e3c; font-weight: bold; }
   </table>
   <style>
     @keyframes spin {
@@ -70,41 +73,54 @@
     async function loadDepartures() {
       const loader = document.getElementById('loader');
       const table = document.getElementById('departuresTable');
-      const debug = document.getElementById('debug');
       loader.style.display = 'block';
       table.style.display = 'none';
-      debug.style.display = 'none';
       const stopId = await getStopId();
       const tbody = document.getElementById('departures');
       tbody.innerHTML = '';
-      debug.innerHTML = '';
       if (!stopId) {
         loader.style.display = 'none';
         table.style.display = 'block';
-        debug.style.display = 'block';
-        debug.innerHTML = '<b>Debug:</b> Haltestellen-ID nicht gefunden.';
-        tbody.innerHTML = '<tr><td colspan="4">Haltestellen-ID nicht gefunden oder API nicht erreichbar</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">Haltestellen-ID nicht gefunden oder API nicht erreichbar</td></tr>';
         return;
       }
-      debug.style.display = 'block';
-      debug.innerHTML = `<b>Debug:</b> Haltestellen-ID: <code>${stopId}</code>`;
       const departures = await getDepartures(stopId);
       loader.style.display = 'none';
       table.style.display = 'block';
       let depList = Array.isArray(departures) ? departures : (departures && departures.departures ? departures.departures : []);
       if (!depList || depList.length === 0) {
-        debug.innerHTML += '<br><b>Debug:</b> Keine Abfahrten oder API-Fehler.<br>Rohdaten:<br><pre>' + JSON.stringify(departures, null, 2) + '</pre>';
-        tbody.innerHTML = '<tr><td colspan="4">Keine Abfahrten gefunden oder API-Fehler</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">Keine Abfahrten gefunden oder API-Fehler</td></tr>';
         return;
       }
-      debug.innerHTML += '<br><b>Debug:</b> Rohdaten:<br><pre>' + JSON.stringify(departures, null, 2) + '</pre>';
       depList.forEach(dep => {
+        // Abweichung berechnen
+        let abweichung = 0;
+        let planned = dep.plannedWhen ? new Date(dep.plannedWhen) : null;
+        let actual = dep.when ? new Date(dep.when) : null;
+        let abweichungText = '';
+        let abweichungClass = '';
+        if (planned && actual) {
+          abweichung = Math.round((actual - planned) / 60000); // Minuten
+          if (abweichung < 0) {
+            abweichungText = '-' + Math.abs(abweichung);
+            abweichungClass = 'abweichung-zu-frueh';
+          } else if (abweichung > 0) {
+            abweichungText = '+' + abweichung;
+            abweichungClass = 'abweichung-zu-spaet';
+          } else {
+            abweichungText = '0';
+            abweichungClass = 'abweichung-puenktlich';
+          }
+        } else {
+          abweichungText = '';
+        }
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${dep.line && dep.line.name ? dep.line.name : ''}</td>
           <td>${dep.destination && dep.destination.name ? dep.destination.name : (dep.direction || '')}</td>
           <td>${dep.plannedWhen ? formatTime(dep.plannedWhen) : ''}</td>
           <td>${dep.when ? formatTime(dep.when) : ''}</td>
+          <td><span class="${abweichungClass}">${abweichungText}</span></td>
         `;
         tbody.appendChild(tr);
       });
