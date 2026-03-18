@@ -355,7 +355,8 @@
       const parsedLastModified = document.lastModified ? new Date(document.lastModified) : null;
       const fallbackDate = new Date(PAGE_CHANGED_AT_FALLBACK);
       const sourceDate = parsedLastModified && !Number.isNaN(parsedLastModified.getTime()) ? parsedLastModified : fallbackDate;
-      document.getElementById('pageNote').textContent = `Letzte Aenderung: ${formatBerlinTimestamp(sourceDate)} (${PAGE_VERSION})`;
+      const pageNoteEl = document.getElementById('pageNote');
+      pageNoteEl.innerHTML = `Letzte Aenderung: ${formatBerlinTimestamp(sourceDate)} (${PAGE_VERSION}) | <a href="https://berliner63.github.io/abfahrten/" target="_blank" style="color: #a0a0a0; text-decoration: underline;">Impressum</a>`;
     }
 
     function updateTitle() {
