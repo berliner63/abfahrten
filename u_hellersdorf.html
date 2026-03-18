@@ -14,7 +14,11 @@
 </head>
 <body>
   <h1>Abfahrtsanzeige U Hellersdorf</h1>
-  <table>
+  <div id="loader" style="text-align:center;margin:40px;">
+    <span style="display:inline-block;width:40px;height:40px;border:4px solid #ccc;border-top:4px solid #333;border-radius:50%;animation:spin 1s linear infinite;"></span>
+    <div style="margin-top:10px;color:#888;">Lade Abfahrten...</div>
+  </div>
+  <table style="display:none;" id="departuresTable">
     <thead>
       <tr>
         <th>Linie</th>
@@ -27,20 +31,34 @@
       <!-- Dynamische Daten werden hier eingefügt -->
     </tbody>
   </table>
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
   <script>
     async function getStopId() {
-      const response = await fetch('https://v6.bvg.transport.rest/locations?query=U%20Hellersdorf');
-      const data = await response.json();
-      if (data && data.length > 0) {
-        return data[0].id;
+      try {
+        const response = await fetch('https://v6.bvg.transport.rest/locations?query=U%20Hellersdorf');
+        const data = await response.json();
+        if (data && data.length > 0) {
+          return data[0].id;
+        }
+      } catch (e) {
+        return null;
       }
       return null;
     }
 
     async function getDepartures(stopId) {
-      const response = await fetch(`https://v6.bvg.transport.rest/stops/${stopId}/departures?duration=30`);
-      const data = await response.json();
-      return data;
+      try {
+        const response = await fetch(`https://v6.bvg.transport.rest/stops/${stopId}/departures?duration=30`);
+        const data = await response.json();
+        return data;
+      } catch (e) {
+        return null;
+      }
     }
 
     function formatTime(dateString) {
@@ -49,16 +67,24 @@
     }
 
     async function loadDepartures() {
+      const loader = document.getElementById('loader');
+      const table = document.getElementById('departuresTable');
+      loader.style.display = 'block';
+      table.style.display = 'none';
       const stopId = await getStopId();
+      const tbody = document.getElementById('departures');
+      tbody.innerHTML = '';
       if (!stopId) {
-        document.getElementById('departures').innerHTML = '<tr><td colspan="4">Haltestellen-ID nicht gefunden</td></tr>';
+        loader.style.display = 'none';
+        table.style.display = 'block';
+        tbody.innerHTML = '<tr><td colspan="4">Haltestellen-ID nicht gefunden oder API nicht erreichbar</td></tr>';
         return;
       }
       const departures = await getDepartures(stopId);
-      const tbody = document.getElementById('departures');
-      tbody.innerHTML = '';
+      loader.style.display = 'none';
+      table.style.display = 'block';
       if (!departures || departures.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4">Keine Abfahrten gefunden</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4">Keine Abfahrten gefunden oder API-Fehler</td></tr>';
         return;
       }
       departures.forEach(dep => {
