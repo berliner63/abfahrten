@@ -137,6 +137,20 @@
       }
     }
 
+    async function getStopById(stopId) {
+      try {
+        const response = await fetch(`https://v6.bvg.transport.rest/stops/${encodeURIComponent(stopId)}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (data && data.id && data.name) {
+          return { id: data.id, name: data.name, type: data.type || 'stop' };
+        }
+      } catch (e) {
+        return null;
+      }
+      return null;
+    }
+
     async function getDepartures(stopId) {
       try {
         const response = await fetch(`https://v6.bvg.transport.rest/stops/${stopId}/departures?duration=30`);
@@ -210,6 +224,16 @@
     async function onSearchStops() {
       const query = document.getElementById('stopQuery').value.trim();
       if (!query) return;
+
+      // Bei numerischer Eingabe zuerst als direkte Haltestellen-ID auflösen.
+      if (/^\d+$/.test(query)) {
+        const stopById = await getStopById(query);
+        if (stopById) {
+          fillStopSelect([stopById]);
+          return;
+        }
+      }
+
       const stops = await searchStops(query);
       if (stops.length === 0) {
         const select = document.getElementById('stopSelect');
