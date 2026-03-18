@@ -49,6 +49,15 @@
     .abweichung-zu-frueh { color: #d32f2f; font-weight: bold; }
     .abweichung-zu-spaet { color: #fbc02d; font-weight: bold; }
     .abweichung-puenktlich { color: #388e3c; font-weight: bold; }
+    .page-note {
+      width: 100%;
+      max-width: 720px;
+      margin: 14px auto 20px auto;
+      padding: 0 8px;
+      color: #a0a0a0;
+      font-size: 14px;
+      text-align: center;
+    }
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
@@ -111,6 +120,12 @@
         padding: 12px 8px;
       }
 
+      .page-note {
+        width: calc(100% - 16px);
+        max-width: none;
+        font-size: 15px;
+      }
+
       th:nth-child(3),
       td:nth-child(3),
       th:nth-child(4),
@@ -153,12 +168,20 @@
       <!-- Dynamische Daten werden hier eingefügt -->
     </tbody>
   </table>
+  <div class="page-note" id="pageNote">Stand: wird geladen ...</div>
   
   <script>
+    const PAGE_VERSION = 'v2026-03-18-01';
+    const PAGE_CHANGED_AT = '18.03.2026 22:40';
     const DEFAULT_STOP_ID = '900175007';
     const DEFAULT_STOP_NAME = 'U Hellersdorf (Berlin)';
     let selectedStopId = DEFAULT_STOP_ID;
     let selectedStopName = DEFAULT_STOP_NAME;
+
+    function updatePageNote() {
+      const modified = document.lastModified ? `, Browser-Stand: ${document.lastModified}` : '';
+      document.getElementById('pageNote').textContent = `Letzte Aenderung: ${PAGE_CHANGED_AT} (${PAGE_VERSION}${modified})`;
+    }
 
     function updateTitle() {
       document.getElementById('pageTitle').textContent = `${selectedStopName}`;
@@ -347,6 +370,7 @@
 
     readStopFromUrl();
     fillStopSelect([{ id: selectedStopId, name: selectedStopName }]);
+    updatePageNote();
     loadDepartures();
     setInterval(loadDepartures, 60000);
   </script>
