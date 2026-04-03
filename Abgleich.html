@@ -104,7 +104,7 @@
     </table>
 
     <div class="note">
-      Parser-Ziel auf der M.A.D.-Seite: Eintraege im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Abgleich erfolgt jeweils mit der zeitlich naechsten BVG-Abfahrt derselben Linie, sofern der Trip nach dieser Haltestelle noch den Betriebshof Marzahn anfaehrt.
+      Parser-Ziel auf der M.A.D.-Seite: Eintraege im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Der Hauptabgleich nutzt nur Fahrten, die nach dieser Haltestelle noch den Betriebshof Marzahn anfahren. Die Alternativen davor/danach werden ueber alle Linien der Haltestelle ermittelt.
     </div>
   </div>
 
@@ -125,6 +125,7 @@
     let autoTimer = null;
     let autoEnabled = true;
     let lastDepartures = [];
+    let lastAllDepartures = [];
     let lastPlanRows = [];
     const tripFilterCache = new Map();
 
@@ -235,7 +236,12 @@
       return Math.round((a.getTime() - b.getTime()) / 60000);
     }
 
-    function classify(delta) {
+    function classify(delta, deltaLabel) {
+      if (deltaLabel) {
+        if (deltaLabel === 'Ausfall?') return { cls: 'warn', txt: deltaLabel };
+        if (deltaLabel === 'API-Ausfall') return { cls: 'err', txt: deltaLabel };
+        return { cls: 'err', txt: deltaLabel };
+      }
       if (delta === null) return { cls: 'err', txt: 'kein Treffer' };
       if (Math.abs(delta) <= 1) return { cls: 'ok', txt: 'puenktlich' };
       if (delta > 1) return { cls: 'warn', txt: '+' + delta + ' min spaeter' };
@@ -339,8 +345,8 @@
       };
     }
 
-    function matchRows(planRows, deps) {
-      const candidates = deps
+    function mapDeparturesToCandidates(deps) {
+      return deps
         .map((d, idx) => ({
           id: idx,
           line: normalizeLine(d.line && d.line.name ? d.line.name : ''),
@@ -348,9 +354,24 @@
           direction: d.direction || ''
         }))
         .filter((d) => d.actual && d.line);
+    }
 
-      // Alternativen beruecksichtigen alle Linien an der Haltestelle (in derselben Richtung).
-      const allDirectionCandidates = [...candidates];
+    function matchRows(planRows, filteredDeps, allDeps, apiAvailable) {
+      const candidates = mapDeparturesToCandidates(filteredDeps);
+      const allDirectionCandidates = mapDeparturesToCandidates(allDeps);
+
+      if (!apiAvailable) {
+        return planRows.map((p) => ({
+          planned: p.hhmm,
+          line: p.line,
+          actual: '-',
+          delta: null,
+          deltaLabel: 'API-Ausfall',
+          altBefore: '-',
+          altAfter: '-',
+          note: 'Keine Live-Daten verfuegbar'
+        }));
+      }
 
       const used = new Set();
       return planRows.map((p) => {
@@ -390,6 +411,7 @@
           line: p.line,
           actual: '-',
           delta: null,
+          deltaLabel: 'Ausfall?',
           altBefore: alts.before,
           altAfter: alts.after,
           note: 'Keine passende Abfahrt mit Betriebshof Marzahn im Verlauf gefunden'
@@ -407,7 +429,7 @@
 
       let ok = 0;
       tbody.innerHTML = rows.map((r) => {
-        const c = classify(r.delta);
+        const c = classify(r.delta, r.deltaLabel);
         if (c.cls === 'ok') ok += 1;
         return '<tr>' +
           '<td>' + r.planned + '</td>' +
@@ -426,19 +448,39 @@
     async function loadAll() {
       try {
         setStatus('Lade Plan und Live-Abfahrten ...', 'warn');
-        const [planText, depRes] = await Promise.all([fetchTextWithFallback(), fetchDepartures()]);
-        lastPlanRows = parsePlanRows(planText);
-        lastDepartures = await filterDeparturesByBetriebshof(depRes.deps, depRes.base);
+        const [planResult, depResult] = await Promise.allSettled([fetchTextWithFallback(), fetchDepartures()]);
 
-        if (!lastDepartures.length) {
-          setStatus('Keine passenden Fahrten ueber Betriebshof Marzahn gefunden.', 'err');
+        if (planResult.status !== 'fulfilled') {
+          throw new Error(planResult.reason && planResult.reason.message ? planResult.reason.message : 'Plan konnte nicht geladen werden');
+        }
+        lastPlanRows = parsePlanRows(planResult.value);
+
+        if (!lastPlanRows.length) {
+          setStatus('Keine passenden Plan-Eintraege gefunden.', 'err');
           renderRows([]);
           return;
         }
 
-        const matched = matchRows(lastPlanRows, lastDepartures);
+        let apiAvailable = false;
+        if (depResult.status === 'fulfilled') {
+          apiAvailable = true;
+          lastAllDepartures = depResult.value.deps;
+          lastDepartures = await filterDeparturesByBetriebshof(depResult.value.deps, depResult.value.base);
+        } else {
+          lastAllDepartures = [];
+          lastDepartures = [];
+        }
+
+        const matched = matchRows(lastPlanRows, lastDepartures, lastAllDepartures, apiAvailable);
         renderRows(matched);
-        setStatus('Aktualisiert (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
+
+        if (!apiAvailable) {
+          setStatus('API-Ausfall: Es werden nur Plan-Daten angezeigt.', 'err');
+        } else if (!lastDepartures.length) {
+          setStatus('API ok, aber keine Fahrten mit Betriebshof Marzahn im Verlauf gefunden.', 'warn');
+        } else {
+          setStatus('Aktualisiert (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
+        }
       } catch (e) {
         setStatus('Fehler: ' + e.message, 'err');
         document.getElementById('rows').innerHTML = '<tr><td colspan="7">Fehler beim Laden der Daten.</td></tr>';
