@@ -569,7 +569,7 @@
     }
 
     async function getDepartures(stopId) {
-      return await requestAcrossEndpoints(`/stops/${encodeURIComponent(stopId)}/departures?duration=30`);
+      return await requestAcrossEndpoints(`/stops/${encodeURIComponent(stopId)}/departures?duration=30&language=de`);
     }
 
     function formatTime(dateString) {
@@ -637,10 +637,12 @@
       const ticker = document.getElementById('remarksTicker');
       const tickerText = document.getElementById('remarksTickerText');
       const texts = [];
+      // Standardhinweise (z.B. Fahrradmitnahme) ausfiltern
+      const STANDARD_CODES = ['FK', 'BM', 'RB'];
       depList.forEach(dep => {
         if (Array.isArray(dep.remarks)) {
           dep.remarks.forEach(r => {
-            if (r && r.text && !texts.includes(r.text)) {
+            if (r && r.text && !texts.includes(r.text) && !STANDARD_CODES.includes(r.code)) {
               texts.push(r.text);
             }
           });
