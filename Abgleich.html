@@ -46,11 +46,13 @@
     th, td { border: 1px solid #333; padding: 8px 7px; text-align: left; }
     th { background: #111; }
     tr:nth-child(even) { background: #0d0d0d; }
-    td:nth-child(1) { width: 11%; }
-    td:nth-child(2) { width: 10%; }
-    td:nth-child(3) { width: 13%; }
+    td:nth-child(1) { width: 10%; }
+    td:nth-child(2) { width: 8%; }
+    td:nth-child(3) { width: 10%; }
     td:nth-child(4) { width: 12%; }
-    td:nth-child(5) { width: 54%; }
+    td:nth-child(5) { width: 17%; }
+    td:nth-child(6) { width: 17%; }
+    td:nth-child(7) { width: 26%; }
     .chip { display: inline-block; padding: 2px 6px; border: 1px solid #333; }
     .chip.ok { border-color: #2e7d32; color: #8bc34a; }
     .chip.warn { border-color: #f9a825; color: #ffd54f; }
@@ -60,7 +62,9 @@
       h1 { font-size: 28px; }
       .controls { grid-template-columns: 1fr; }
       th, td { font-size: 14px; }
-      td:nth-child(5) { word-break: break-word; }
+      td:nth-child(5),
+      td:nth-child(6),
+      td:nth-child(7) { word-break: break-word; }
     }
   </style>
 </head>
@@ -89,11 +93,13 @@
           <th>Linie</th>
           <th>Ist (BVG)</th>
           <th>Delta</th>
+          <th>Alt davor</th>
+          <th>Alt danach</th>
           <th>Hinweis</th>
         </tr>
       </thead>
       <tbody id="rows">
-        <tr><td colspan="5">Lade Daten ...</td></tr>
+        <tr><td colspan="7">Lade Daten ...</td></tr>
       </tbody>
     </table>
 
@@ -242,6 +248,14 @@
       return Array.from(s).sort((a, b) => a.localeCompare(b, 'de'));
     }
 
+    function preferredDirection(directions) {
+      const exact = directions.find((d) => String(d).toLowerCase().includes('betriebshof marzahn'));
+      if (exact) return exact;
+      const fallback = directions.find((d) => String(d).toLowerCase().includes('marzahn'));
+      if (fallback) return fallback;
+      return directions[0];
+    }
+
     function fillDirectionSelect(directions) {
       const select = document.getElementById('directionSelect');
       const old = select.value;
@@ -252,7 +266,43 @@
         o.textContent = 'Richtung: ' + dir;
         select.appendChild(o);
       });
-      if (old && directions.includes(old)) select.value = old;
+      if (old && directions.includes(old)) {
+        select.value = old;
+      } else {
+        select.value = preferredDirection(directions);
+      }
+    }
+
+    function formatAltCandidate(c) {
+      return c.actual.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' | ' + c.line;
+    }
+
+    function findAlternatives(allCandidates, planned) {
+      let before = null;
+      let after = null;
+      let bestBefore = Infinity;
+      let bestAfter = Infinity;
+
+      allCandidates.forEach((c) => {
+        const delta = minutesDiff(c.actual, planned);
+        if (delta < 0) {
+          const abs = Math.abs(delta);
+          if (abs < bestBefore) {
+            bestBefore = abs;
+            before = c;
+          }
+        } else if (delta > 0) {
+          if (delta < bestAfter) {
+            bestAfter = delta;
+            after = c;
+          }
+        }
+      });
+
+      return {
+        before: before ? formatAltCandidate(before) : '-',
+        after: after ? formatAltCandidate(after) : '-'
+      };
     }
 
     function matchRows(planRows, deps, direction) {
@@ -265,6 +315,9 @@
           direction: d.direction || ''
         }))
         .filter((d) => d.actual && d.line);
+
+      // Alternativen beruecksichtigen alle Linien an der Haltestelle (in derselben Richtung).
+      const allDirectionCandidates = [...candidates];
 
       const used = new Set();
       return planRows.map((p) => {
@@ -285,20 +338,27 @@
 
         if (best && bestAbs <= 120) {
           used.add(best.c.id);
+          const alts = findAlternatives(allDirectionCandidates, planned);
           return {
             planned: p.hhmm,
             line: p.line,
             actual: best.c.actual.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
             delta: best.delta,
+            altBefore: alts.before,
+            altAfter: alts.after,
             note: best.c.direction
           };
         }
+
+        const alts = findAlternatives(allDirectionCandidates, planned);
 
         return {
           planned: p.hhmm,
           line: p.line,
           actual: '-',
           delta: null,
+          altBefore: alts.before,
+          altAfter: alts.after,
           note: 'Keine passende Abfahrt in der Richtung gefunden'
         };
       });
@@ -307,7 +367,7 @@
     function renderRows(rows) {
       const tbody = document.getElementById('rows');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5">Keine passenden HH:MM | Linie-Eintraege fuer heute gefunden.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7">Keine passenden HH:MM | Linie-Eintraege fuer heute gefunden.</td></tr>';
         document.getElementById('countsText').textContent = 'Treffer: 0';
         return;
       }
@@ -321,6 +381,8 @@
           '<td>' + r.line + '</td>' +
           '<td>' + r.actual + '</td>' +
           '<td><span class="chip ' + c.cls + '">' + c.txt + '</span></td>' +
+            '<td>' + r.altBefore + '</td>' +
+            '<td>' + r.altAfter + '</td>' +
           '<td>' + r.note + '</td>' +
           '</tr>';
       }).join('');
@@ -349,7 +411,7 @@
         setStatus('Aktualisiert (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
       } catch (e) {
         setStatus('Fehler: ' + e.message, 'err');
-        document.getElementById('rows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
+        document.getElementById('rows').innerHTML = '<tr><td colspan="7">Fehler beim Laden der Daten.</td></tr>';
       }
     }
 
