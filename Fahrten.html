@@ -268,8 +268,8 @@
       <tr>
         <th>Linie</th>
         <th>Ziel</th>
-        <th>Abfahrtszeit</th>
-        <th>Abweichung</th>
+        <th>Soll</th>
+        <th>Ist</th>
       </tr>
     </thead>
     <tbody id="departures">
@@ -603,33 +603,27 @@
       const tbody = document.getElementById('departures');
       tbody.innerHTML = '';
       depList.slice(0, 11).forEach(dep => {
-        // Abweichung berechnen
-        let abweichung = 0;
+        // Ist-Zeit und Klasse berechnen
         let planned = dep.plannedWhen ? new Date(dep.plannedWhen) : null;
         let actual = dep.when ? new Date(dep.when) : null;
-        let abweichungText = '';
-        let abweichungClass = '';
+        let istText = actual ? formatTime(dep.when) : (planned ? formatTime(dep.plannedWhen) : '');
+        let istClass = '';
         if (planned && actual) {
-          abweichung = Math.round((actual - planned) / 60000); // Minuten
-          if (abweichung < 0) {
-            abweichungText = '-' + Math.abs(abweichung);
-            abweichungClass = 'abweichung-zu-frueh';
-          } else if (abweichung > 0) {
-            abweichungText = '+' + abweichung;
-            abweichungClass = 'abweichung-zu-spaet';
+          const diff = Math.round((actual - planned) / 60000);
+          if (diff < 0) {
+            istClass = 'abweichung-zu-frueh';
+          } else if (diff > 0) {
+            istClass = 'abweichung-zu-spaet';
           } else {
-            abweichungText = '0';
-            abweichungClass = 'abweichung-puenktlich';
+            istClass = 'abweichung-puenktlich';
           }
-        } else {
-          abweichungText = '';
         }
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${dep.line && dep.line.name ? dep.line.name : ''}</td>
           <td>${(dep.direction || '').replace(/->/g, '>')}</td>
           <td>${dep.plannedWhen ? formatTime(dep.plannedWhen) : ''}</td>
-          <td><span class="${abweichungClass}">${abweichungText}</span></td>
+          <td><span class="${istClass}">${istText}</span></td>
         `;
         tbody.appendChild(tr);
       });
