@@ -121,6 +121,7 @@
       'https://v6.db.transport.rest'
     ];
     const BETRIEBSHOF_STOP_ID = '900170010';
+    const MAX_MATCH_MINUTES = 20;
 
     let autoTimer = null;
     let autoEnabled = true;
@@ -287,8 +288,7 @@
     }
 
     async function filterDeparturesByBetriebshof(deps, base) {
-      const subset = deps.slice(0, 24);
-      const checks = await Promise.all(subset.map(async (d) => {
+      const checks = await Promise.all(deps.map(async (d) => {
         const tripId = d && d.tripId ? String(d.tripId) : '';
         const lineName = d && d.line && d.line.name ? String(d.line.name) : '';
         if (!tripId) return false;
@@ -310,7 +310,7 @@
         }
       }));
 
-      return subset.filter((_, i) => checks[i]);
+      return deps.filter((_, i) => checks[i]);
     }
 
     function formatAltCandidate(c) {
@@ -390,7 +390,7 @@
           }
         }
 
-        if (best && bestAbs <= 120) {
+        if (best && bestAbs <= MAX_MATCH_MINUTES) {
           used.add(best.c.id);
           const alts = findAlternatives(allDirectionCandidates, planned);
           return {
