@@ -124,10 +124,6 @@
   <script>
     const STOP_ID = '900175011';
     const MAD_DOC_URL = 'https://www.mad-doc.eu/dienste/andreas/';
-    const MAD_DOC_SOURCES = [
-      'https://r.jina.ai/http://www.mad-doc.eu/dienste/andreas/',
-      'https://api.allorigins.win/raw?url=' + encodeURIComponent(MAD_DOC_URL)
-    ];
     const BVG_BASES = [
       'https://v6.bvg.transport.rest',
       'https://v6.vbb.transport.rest',
@@ -205,9 +201,18 @@
       return unique;
     }
 
+    function buildMadDocSources() {
+      const cacheBuster = Date.now();
+      const targetUrl = MAD_DOC_URL + (MAD_DOC_URL.includes('?') ? '&' : '?') + '_=' + cacheBuster;
+      return [
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl),
+        'https://r.jina.ai/http://www.mad-doc.eu/dienste/andreas/?_=' + cacheBuster
+      ];
+    }
+
     async function fetchTextWithFallback() {
       let lastErr = null;
-      for (const url of MAD_DOC_SOURCES) {
+      for (const url of buildMadDocSources()) {
         try {
           const res = await fetch(url);
           if (!res.ok) throw new Error('HTTP ' + res.status);
