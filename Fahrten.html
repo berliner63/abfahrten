@@ -78,6 +78,39 @@
     .data-status.fallback { color: #ffd54f; border-color: #f9a825; }
     .data-status.cache { color: #ffb74d; border-color: #ef6c00; }
     .data-status.error { color: #ef9a9a; border-color: #c62828; }
+    .remarks-ticker {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-top: none;
+      overflow: hidden;
+      height: 32px;
+      display: none;
+    }
+    .remarks-ticker-inner {
+      display: inline-block;
+      white-space: nowrap;
+      animation: marquee-scroll 30s linear infinite;
+      color: #ffa500;
+      font-size: 14px;
+      line-height: 32px;
+      padding-left: 100%;
+    }
+    .remarks-ticker-inner:hover {
+      animation-play-state: paused;
+    }
+    @keyframes marquee-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+    @media (max-width: 1024px), (pointer: coarse) {
+      .remarks-ticker {
+        width: calc(100% - 16px);
+        max-width: none;
+      }
+    }
     .page-note a { color: #a0a0a0; cursor: pointer; text-decoration: underline; }
     .page-note a:hover { color: #ccc; }
     .modal-overlay {
@@ -276,6 +309,7 @@
       <!-- Dynamische Daten werden hier eingefügt -->
     </tbody>
   </table>
+  <div class="remarks-ticker" id="remarksTicker"><span class="remarks-ticker-inner" id="remarksTickerText"></span></div>
   <div class="page-note" id="pageNote">Stand: wird geladen ...</div>
   
   <div class="modal-overlay" id="impressumModal">
@@ -599,9 +633,34 @@
       }
     }
 
+    function updateRemarksTicker(depList) {
+      const ticker = document.getElementById('remarksTicker');
+      const tickerText = document.getElementById('remarksTickerText');
+      const texts = [];
+      depList.forEach(dep => {
+        if (Array.isArray(dep.remarks)) {
+          dep.remarks.forEach(r => {
+            if (r && r.text && !texts.includes(r.text)) {
+              texts.push(r.text);
+            }
+          });
+        }
+      });
+      if (texts.length > 0) {
+        tickerText.textContent = texts.join(' *** ');
+        // Scroll-Dauer proportional zur Textlänge (min 15s, max 60s)
+        const duration = Math.min(60, Math.max(15, Math.round(texts.join(' *** ').length / 8)));
+        tickerText.style.animationDuration = duration + 's';
+        ticker.style.display = 'block';
+      } else {
+        ticker.style.display = 'none';
+      }
+    }
+
     function renderRows(depList) {
       const tbody = document.getElementById('departures');
       tbody.innerHTML = '';
+      updateRemarksTicker(depList);
       depList.slice(0, 11).forEach(dep => {
         // Ist-Zeit und Klasse berechnen
         let planned = dep.plannedWhen ? new Date(dep.plannedWhen) : null;
