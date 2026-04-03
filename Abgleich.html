@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Puenktlichkeitsabgleich</title>
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="shortcut icon" href="./logo.png">
+  <link rel="apple-touch-icon" href="./logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body { font-family: 'Roboto Condensed', sans-serif; background: #000; color: #fff; margin: 0; padding: 0 8px; }
+    .wrap { width: 100%; max-width: 920px; margin: 18px auto; }
+    h1 { margin: 0 0 8px 0; font-size: 34px; }
+    .sub { color: #aaa; margin-bottom: 14px; font-size: 14px; }
+    .panel {
+      border: 1px solid #333;
+      background: #0d0d0d;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+    select, button {
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 16px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 8px 10px;
+    }
+    button { cursor: pointer; }
+    button:hover { background: #1b1b1b; }
+    .meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 14px; color: #c2c2c2; }
+    .ok { color: #8bc34a; }
+    .warn { color: #ffd54f; }
+    .err { color: #ef9a9a; }
+    table { border-collapse: collapse; table-layout: fixed; width: 100%; background: #000; }
+    th, td { border: 1px solid #333; padding: 8px 7px; text-align: left; }
+    th { background: #111; }
+    tr:nth-child(even) { background: #0d0d0d; }
+    td:nth-child(1) { width: 11%; }
+    td:nth-child(2) { width: 10%; }
+    td:nth-child(3) { width: 13%; }
+    td:nth-child(4) { width: 12%; }
+    td:nth-child(5) { width: 54%; }
+    .chip { display: inline-block; padding: 2px 6px; border: 1px solid #333; }
+    .chip.ok { border-color: #2e7d32; color: #8bc34a; }
+    .chip.warn { border-color: #f9a825; color: #ffd54f; }
+    .chip.err { border-color: #c62828; color: #ef9a9a; }
+    .note { color: #9a9a9a; font-size: 13px; margin-top: 10px; }
+    @media (max-width: 1024px), (pointer: coarse) {
+      h1 { font-size: 28px; }
+      .controls { grid-template-columns: 1fr; }
+      th, td { font-size: 14px; }
+      td:nth-child(5) { word-break: break-word; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Puenktlichkeitsabgleich M.A.D.-Plan vs. BVG</h1>
+    <div class="sub">Stop: Stendaler Str./Quedlinburger Str. (900175011). Abgleich nur fuer eine ausgewaehlte Richtung.</div>
+
+    <div class="panel">
+      <div class="controls">
+        <select id="directionSelect" aria-label="Richtung"></select>
+        <button id="refreshBtn" type="button">Jetzt aktualisieren</button>
+        <button id="toggleAutoBtn" type="button">Auto: an</button>
+      </div>
+      <div class="meta" style="margin-top:10px;">
+        <div id="statusText">Status: wird geladen ...</div>
+        <div id="sourceText">Quelle: -</div>
+        <div id="countsText">Treffer: -</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Soll (Plan)</th>
+          <th>Linie</th>
+          <th>Ist (BVG)</th>
+          <th>Delta</th>
+          <th>Hinweis</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="5">Lade Daten ...</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      Parser-Ziel auf der M.A.D.-Seite: Eintraege im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Abgleich erfolgt jeweils mit der zeitlich naechsten BVG-Abfahrt derselben Linie in der gewaehlten Richtung.
+    </div>
+  </div>
+
+  <script>
+    const STOP_ID = '900175011';
+    const MAD_DOC_URL = 'https://www.mad-doc.eu/dienste/andreas/';
+    const MAD_DOC_SOURCES = [
+      'https://r.jina.ai/http://www.mad-doc.eu/dienste/andreas/',
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent(MAD_DOC_URL)
+    ];
+    const BVG_BASES = [
+      'https://v6.bvg.transport.rest',
+      'https://v6.vbb.transport.rest',
+      'https://v6.db.transport.rest'
+    ];
+
+    let autoTimer = null;
+    let autoEnabled = true;
+    let lastDepartures = [];
+    let lastPlanRows = [];
+
+    function setStatus(text, cls) {
+      const el = document.getElementById('statusText');
+      el.textContent = 'Status: ' + text;
+      el.className = cls || '';
+    }
+
+    function getTodayLabel() {
+      const now = new Date();
+      const wd = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][now.getDay()];
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      return wd + ', ' + dd + '.' + mm + '.';
+    }
+
+    function extractTodaySection(text) {
+      const today = getTodayLabel();
+      const start = text.indexOf(today);
+      if (start < 0) return text;
+
+      const after = text.slice(start + today.length);
+      const nextDateMatch = after.match(/(?:Mo|Di|Mi|Do|Fr|Sa|So),\s*\d{2}\.\d{2}\./);
+      if (!nextDateMatch) return text.slice(start);
+
+      const nextPos = start + today.length + nextDateMatch.index;
+      return text.slice(start, nextPos);
+    }
+
+    function normalizeLine(raw) {
+      return (raw || '').trim().toUpperCase();
+    }
+
+    function looksLikeLine(line) {
+      // 18, M6, X54, U5, S7 etc.
+      return /^([A-Z]{0,2}\d+[A-Z]?)$/.test(line);
+    }
+
+    function parsePlanRows(text) {
+      const section = extractTodaySection(text);
+      const result = [];
+      const rx = /(\d{1,2}:\d{2})\s*\|\s*([A-Za-z0-9]+)/g;
+      let m;
+      while ((m = rx.exec(section)) !== null) {
+        const hhmm = m[1];
+        const line = normalizeLine(m[2]);
+        if (!looksLikeLine(line)) continue;
+        result.push({ hhmm, line });
+      }
+
+      // de-dupe
+      const unique = [];
+      const seen = new Set();
+      result.forEach((r) => {
+        const k = r.hhmm + '|' + r.line;
+        if (!seen.has(k)) {
+          seen.add(k);
+          unique.push(r);
+        }
+      });
+      return unique;
+    }
+
+    async function fetchTextWithFallback() {
+      let lastErr = null;
+      for (const url of MAD_DOC_SOURCES) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const txt = await res.text();
+          if (!txt || txt.length < 50) throw new Error('Leere Antwort');
+          document.getElementById('sourceText').textContent = 'Quelle: ' + url;
+          return txt;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error('Keine Quelle erreichbar');
+    }
+
+    async function fetchDepartures() {
+      let lastErr = null;
+      for (const base of BVG_BASES) {
+        try {
+          const url = base + '/stops/' + encodeURIComponent(STOP_ID) + '/departures?duration=240&language=de';
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status + ' @ ' + base);
+          const data = await res.json();
+          const deps = Array.isArray(data) ? data : (Array.isArray(data.departures) ? data.departures : []);
+          if (!deps.length) throw new Error('Keine Abfahrten @ ' + base);
+          return { deps, base };
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error('API nicht erreichbar');
+    }
+
+    function toTodayDate(hhmm) {
+      const [h, m] = hhmm.split(':').map((n) => parseInt(n, 10));
+      const d = new Date();
+      d.setHours(h, m, 0, 0);
+      return d;
+    }
+
+    function minutesDiff(a, b) {
+      return Math.round((a.getTime() - b.getTime()) / 60000);
+    }
+
+    function classify(delta) {
+      if (delta === null) return { cls: 'err', txt: 'kein Treffer' };
+      if (Math.abs(delta) <= 1) return { cls: 'ok', txt: 'puenktlich' };
+      if (delta > 1) return { cls: 'warn', txt: '+' + delta + ' min spaeter' };
+      return { cls: 'err', txt: delta + ' min frueher' };
+    }
+
+    function uniqueDirections(deps) {
+      const s = new Set();
+      deps.forEach((d) => {
+        if (d && d.direction) s.add(String(d.direction));
+      });
+      return Array.from(s).sort((a, b) => a.localeCompare(b, 'de'));
+    }
+
+    function fillDirectionSelect(directions) {
+      const select = document.getElementById('directionSelect');
+      const old = select.value;
+      select.innerHTML = '';
+      directions.forEach((dir) => {
+        const o = document.createElement('option');
+        o.value = dir;
+        o.textContent = 'Richtung: ' + dir;
+        select.appendChild(o);
+      });
+      if (old && directions.includes(old)) select.value = old;
+    }
+
+    function matchRows(planRows, deps, direction) {
+      const candidates = deps
+        .filter((d) => (d.direction || '') === direction)
+        .map((d, idx) => ({
+          id: idx,
+          line: normalizeLine(d.line && d.line.name ? d.line.name : ''),
+          actual: d.when ? new Date(d.when) : (d.plannedWhen ? new Date(d.plannedWhen) : null),
+          direction: d.direction || ''
+        }))
+        .filter((d) => d.actual && d.line);
+
+      const used = new Set();
+      return planRows.map((p) => {
+        const planned = toTodayDate(p.hhmm);
+        let best = null;
+        let bestAbs = Infinity;
+
+        for (const c of candidates) {
+          if (used.has(c.id)) continue;
+          if (c.line !== p.line) continue;
+          const delta = minutesDiff(c.actual, planned);
+          const abs = Math.abs(delta);
+          if (abs < bestAbs) {
+            best = { c, delta };
+            bestAbs = abs;
+          }
+        }
+
+        if (best && bestAbs <= 120) {
+          used.add(best.c.id);
+          return {
+            planned: p.hhmm,
+            line: p.line,
+            actual: best.c.actual.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+            delta: best.delta,
+            note: best.c.direction
+          };
+        }
+
+        return {
+          planned: p.hhmm,
+          line: p.line,
+          actual: '-',
+          delta: null,
+          note: 'Keine passende Abfahrt in der Richtung gefunden'
+        };
+      });
+    }
+
+    function renderRows(rows) {
+      const tbody = document.getElementById('rows');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5">Keine passenden HH:MM | Linie-Eintraege fuer heute gefunden.</td></tr>';
+        document.getElementById('countsText').textContent = 'Treffer: 0';
+        return;
+      }
+
+      let ok = 0;
+      tbody.innerHTML = rows.map((r) => {
+        const c = classify(r.delta);
+        if (c.cls === 'ok') ok += 1;
+        return '<tr>' +
+          '<td>' + r.planned + '</td>' +
+          '<td>' + r.line + '</td>' +
+          '<td>' + r.actual + '</td>' +
+          '<td><span class="chip ' + c.cls + '">' + c.txt + '</span></td>' +
+          '<td>' + r.note + '</td>' +
+          '</tr>';
+      }).join('');
+
+      document.getElementById('countsText').textContent = 'Treffer: ' + ok + ' / ' + rows.length + ' puenktlich';
+    }
+
+    async function loadAll() {
+      try {
+        setStatus('Lade Plan und Live-Abfahrten ...', 'warn');
+        const [planText, depRes] = await Promise.all([fetchTextWithFallback(), fetchDepartures()]);
+        lastPlanRows = parsePlanRows(planText);
+        lastDepartures = depRes.deps;
+
+        const dirs = uniqueDirections(lastDepartures);
+        if (!dirs.length) {
+          setStatus('Keine Richtungen verfuegbar.', 'err');
+          renderRows([]);
+          return;
+        }
+
+        fillDirectionSelect(dirs);
+        const selected = document.getElementById('directionSelect').value || dirs[0];
+        const matched = matchRows(lastPlanRows, lastDepartures, selected);
+        renderRows(matched);
+        setStatus('Aktualisiert (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
+      } catch (e) {
+        setStatus('Fehler: ' + e.message, 'err');
+        document.getElementById('rows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
+      }
+    }
+
+    function rerenderWithDirection() {
+      const dir = document.getElementById('directionSelect').value;
+      if (!dir || !lastPlanRows.length || !lastDepartures.length) return;
+      const matched = matchRows(lastPlanRows, lastDepartures, dir);
+      renderRows(matched);
+      setStatus('Richtung gewechselt (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
+    }
+
+    function toggleAuto() {
+      autoEnabled = !autoEnabled;
+      const btn = document.getElementById('toggleAutoBtn');
+      btn.textContent = 'Auto: ' + (autoEnabled ? 'an' : 'aus');
+      if (autoEnabled) {
+        autoTimer = setInterval(loadAll, 60000);
+      } else if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', loadAll);
+    document.getElementById('toggleAutoBtn').addEventListener('click', toggleAuto);
+    document.getElementById('directionSelect').addEventListener('change', rerenderWithDirection);
+
+    loadAll();
+    autoTimer = setInterval(loadAll, 60000);
+  </script>
+</body>
+</html>
