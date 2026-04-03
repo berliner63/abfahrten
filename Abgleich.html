@@ -24,11 +24,12 @@
     }
     .controls {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: auto auto;
       gap: 8px;
       align-items: center;
+      justify-content: start;
     }
-    select, button {
+    button {
       font-family: 'Roboto Condensed', sans-serif;
       font-size: 16px;
       background: #111;
@@ -71,11 +72,10 @@
 <body>
   <div class="wrap">
     <h1>Puenktlichkeitsabgleich M.A.D.-Plan vs. BVG</h1>
-    <div class="sub">Stop: Stendaler Str./Quedlinburger Str. (900175011). Abgleich nur fuer eine ausgewaehlte Richtung.</div>
+    <div class="sub">Stop: Stendaler Str./Quedlinburger Str. (900175011). Beruecksichtigt werden nur Fahrten, bei denen Betriebshof Marzahn spaeter im Linienverlauf liegt.</div>
 
     <div class="panel">
       <div class="controls">
-        <select id="directionSelect" aria-label="Richtung"></select>
         <button id="refreshBtn" type="button">Jetzt aktualisieren</button>
         <button id="toggleAutoBtn" type="button">Auto: an</button>
       </div>
@@ -104,7 +104,7 @@
     </table>
 
     <div class="note">
-      Parser-Ziel auf der M.A.D.-Seite: Eintraege im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Abgleich erfolgt jeweils mit der zeitlich naechsten BVG-Abfahrt derselben Linie in der gewaehlten Richtung.
+      Parser-Ziel auf der M.A.D.-Seite: Eintraege im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Abgleich erfolgt jeweils mit der zeitlich naechsten BVG-Abfahrt derselben Linie, sofern der Trip nach dieser Haltestelle noch den Betriebshof Marzahn anfaehrt.
     </div>
   </div>
 
@@ -120,11 +120,13 @@
       'https://v6.vbb.transport.rest',
       'https://v6.db.transport.rest'
     ];
+    const BETRIEBSHOF_STOP_ID = '900170010';
 
     let autoTimer = null;
     let autoEnabled = true;
     let lastDepartures = [];
     let lastPlanRows = [];
+    const tripFilterCache = new Map();
 
     function setStatus(text, cls) {
       const el = document.getElementById('statusText');
@@ -240,37 +242,69 @@
       return { cls: 'err', txt: delta + ' min frueher' };
     }
 
-    function uniqueDirections(deps) {
-      const s = new Set();
-      deps.forEach((d) => {
-        if (d && d.direction) s.add(String(d.direction));
-      });
-      return Array.from(s).sort((a, b) => a.localeCompare(b, 'de'));
+    function stopNameMatchesBetriebshof(name) {
+      return String(name || '').toLowerCase().includes('betriebshof marzahn');
     }
 
-    function preferredDirection(directions) {
-      const exact = directions.find((d) => String(d).toLowerCase().includes('betriebshof marzahn'));
-      if (exact) return exact;
-      const fallback = directions.find((d) => String(d).toLowerCase().includes('marzahn'));
-      if (fallback) return fallback;
-      return directions[0];
-    }
-
-    function fillDirectionSelect(directions) {
-      const select = document.getElementById('directionSelect');
-      const old = select.value;
-      select.innerHTML = '';
-      directions.forEach((dir) => {
-        const o = document.createElement('option');
-        o.value = dir;
-        o.textContent = 'Richtung: ' + dir;
-        select.appendChild(o);
-      });
-      if (old && directions.includes(old)) {
-        select.value = old;
-      } else {
-        select.value = preferredDirection(directions);
+    async function fetchTripById(tripId, lineName, preferredBase) {
+      const bases = [preferredBase, ...BVG_BASES.filter((b) => b !== preferredBase)];
+      let lastErr = null;
+      for (const base of bases) {
+        try {
+          const url = base + '/trips/' + encodeURIComponent(tripId) + '?lineName=' + encodeURIComponent(lineName || '');
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return await res.json();
+        } catch (e) {
+          lastErr = e;
+        }
       }
+      throw lastErr || new Error('Trip konnte nicht geladen werden');
+    }
+
+    function hasBetriebshofDownstream(tripData) {
+      const trip = tripData && tripData.trip ? tripData.trip : tripData;
+      const stopovers = Array.isArray(trip && trip.stopovers) ? trip.stopovers : [];
+      if (!stopovers.length) return false;
+
+      let currentIndex = -1;
+      let bhmIndex = -1;
+
+      stopovers.forEach((s, idx) => {
+        const id = s && s.stop ? String(s.stop.id || '') : '';
+        const name = s && s.stop ? String(s.stop.name || '') : '';
+        if (id === STOP_ID && currentIndex === -1) currentIndex = idx;
+        if ((id === BETRIEBSHOF_STOP_ID || stopNameMatchesBetriebshof(name)) && bhmIndex === -1) bhmIndex = idx;
+      });
+
+      return currentIndex >= 0 && bhmIndex > currentIndex;
+    }
+
+    async function filterDeparturesByBetriebshof(deps, base) {
+      const subset = deps.slice(0, 24);
+      const checks = await Promise.all(subset.map(async (d) => {
+        const tripId = d && d.tripId ? String(d.tripId) : '';
+        const lineName = d && d.line && d.line.name ? String(d.line.name) : '';
+        if (!tripId) return false;
+
+        const cacheKey = tripId;
+        if (tripFilterCache.has(cacheKey)) return tripFilterCache.get(cacheKey);
+
+        try {
+          const trip = await fetchTripById(tripId, lineName, base);
+          const ok = hasBetriebshofDownstream(trip);
+          tripFilterCache.set(cacheKey, ok);
+          return ok;
+        } catch (e) {
+          // Fallback-Heuristik, wenn Trip-Details gerade nicht verfuegbar sind.
+          const direction = String(d.direction || '').toLowerCase();
+          const heuristic = direction.includes('marzahn') && !direction.includes('betriebshof marzahn');
+          tripFilterCache.set(cacheKey, heuristic);
+          return heuristic;
+        }
+      }));
+
+      return subset.filter((_, i) => checks[i]);
     }
 
     function formatAltCandidate(c) {
@@ -305,9 +339,8 @@
       };
     }
 
-    function matchRows(planRows, deps, direction) {
+    function matchRows(planRows, deps) {
       const candidates = deps
-        .filter((d) => (d.direction || '') === direction)
         .map((d, idx) => ({
           id: idx,
           line: normalizeLine(d.line && d.line.name ? d.line.name : ''),
@@ -359,7 +392,7 @@
           delta: null,
           altBefore: alts.before,
           altAfter: alts.after,
-          note: 'Keine passende Abfahrt in der Richtung gefunden'
+          note: 'Keine passende Abfahrt mit Betriebshof Marzahn im Verlauf gefunden'
         };
       });
     }
@@ -395,32 +428,21 @@
         setStatus('Lade Plan und Live-Abfahrten ...', 'warn');
         const [planText, depRes] = await Promise.all([fetchTextWithFallback(), fetchDepartures()]);
         lastPlanRows = parsePlanRows(planText);
-        lastDepartures = depRes.deps;
+        lastDepartures = await filterDeparturesByBetriebshof(depRes.deps, depRes.base);
 
-        const dirs = uniqueDirections(lastDepartures);
-        if (!dirs.length) {
-          setStatus('Keine Richtungen verfuegbar.', 'err');
+        if (!lastDepartures.length) {
+          setStatus('Keine passenden Fahrten ueber Betriebshof Marzahn gefunden.', 'err');
           renderRows([]);
           return;
         }
 
-        fillDirectionSelect(dirs);
-        const selected = document.getElementById('directionSelect').value || dirs[0];
-        const matched = matchRows(lastPlanRows, lastDepartures, selected);
+        const matched = matchRows(lastPlanRows, lastDepartures);
         renderRows(matched);
         setStatus('Aktualisiert (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
       } catch (e) {
         setStatus('Fehler: ' + e.message, 'err');
         document.getElementById('rows').innerHTML = '<tr><td colspan="7">Fehler beim Laden der Daten.</td></tr>';
       }
-    }
-
-    function rerenderWithDirection() {
-      const dir = document.getElementById('directionSelect').value;
-      if (!dir || !lastPlanRows.length || !lastDepartures.length) return;
-      const matched = matchRows(lastPlanRows, lastDepartures, dir);
-      renderRows(matched);
-      setStatus('Richtung gewechselt (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
     }
 
     function toggleAuto() {
@@ -437,7 +459,6 @@
 
     document.getElementById('refreshBtn').addEventListener('click', loadAll);
     document.getElementById('toggleAutoBtn').addEventListener('click', toggleAuto);
-    document.getElementById('directionSelect').addEventListener('change', rerenderWithDirection);
 
     loadAll();
     autoTimer = setInterval(loadAll, 60000);
