@@ -58,11 +58,22 @@
     .chip.ok { border-color: #2e7d32; color: #8bc34a; }
     .chip.warn { border-color: #f9a825; color: #ffd54f; }
     .chip.err { border-color: #c62828; color: #ef9a9a; }
+    .leave-hint {
+      display: none;
+      margin-top: 18px;
+      font-size: 34px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+    .leave-hint.ok { color: #8bc34a; }
+    .leave-hint.warn { color: #ffd54f; }
+    .leave-hint.err { color: #ef9a9a; }
     .note { color: #9a9a9a; font-size: 13px; margin-top: 10px; }
     @media (max-width: 1024px), (pointer: coarse) {
       h1 { font-size: 28px; }
       .controls { grid-template-columns: 1fr; }
       th, td { font-size: 14px; }
+      .leave-hint { font-size: 28px; }
       td:nth-child(5),
       td:nth-child(6),
       td:nth-child(7) { word-break: break-word; }
@@ -103,6 +114,8 @@
       </tbody>
     </table>
 
+    <div id="leaveHint" class="leave-hint"></div>
+
     <div class="note">
       Parser-Ziel auf der Mad-Seite: Einträge im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Der Hauptabgleich nutzt nur Fahrten, die nach dieser Haltestelle noch den Betriebshof Marzahn anfahren. Die Alternativen davor/danach werden über alle Linien in derselben Fahrtrichtung ermittelt.
     </div>
@@ -124,6 +137,7 @@
     const MAX_MATCH_MINUTES = 20;
 
     let autoTimer = null;
+    let countdownTimer = null;
     let autoEnabled = true;
     let lastDepartures = [];
     let lastAllDepartures = [];
@@ -426,6 +440,7 @@
       if (!rows.length) {
         tbody.innerHTML = '<tr><td colspan="7">Keine passenden HH:MM | Linie-Einträge für heute gefunden.</td></tr>';
         document.getElementById('countsText').textContent = 'Treffer: 0';
+        updateLeaveHint([]);
         return;
       }
 
@@ -445,6 +460,48 @@
       }).join('');
 
       document.getElementById('countsText').textContent = 'Treffer: ' + ok + ' / ' + rows.length + ' pünktlich';
+      updateLeaveHint(rows);
+    }
+
+    function updateLeaveHint(rows) {
+      const hint = document.getElementById('leaveHint');
+      const now = new Date();
+      let nextPlanned = null;
+
+      rows.forEach((row) => {
+        const planned = toTodayDate(row.planned);
+        const untilDeparture = Math.floor((planned.getTime() - now.getTime()) / 60000);
+        if (untilDeparture < 10 || untilDeparture > 40) return;
+        if (!nextPlanned || planned < nextPlanned) {
+          nextPlanned = planned;
+        }
+      });
+
+      if (!nextPlanned) {
+        hint.style.display = 'none';
+        hint.textContent = '';
+        hint.className = 'leave-hint';
+        return;
+      }
+
+      const minutesUntilLeave = Math.max(0, Math.ceil((nextPlanned.getTime() - 10 * 60000 - now.getTime()) / 60000));
+      let urgencyClass = 'ok';
+      if (minutesUntilLeave <= 5) {
+        urgencyClass = 'err';
+      } else if (minutesUntilLeave <= 10) {
+        urgencyClass = 'warn';
+      }
+
+      hint.textContent = 'Du musst in ' + minutesUntilLeave + ' Minuten losgehen!';
+      hint.className = 'leave-hint ' + urgencyClass;
+      hint.style.display = 'block';
+    }
+
+    function startCountdownTimer() {
+      if (countdownTimer) clearInterval(countdownTimer);
+      countdownTimer = setInterval(() => {
+        updateLeaveHint(lastPlanRows.map((row) => ({ planned: row.hhmm })));
+      }, 1000);
     }
 
     async function loadAll() {
@@ -506,6 +563,7 @@
 
     loadAll();
     autoTimer = setInterval(loadAll, 60000);
+    startCountdownTimer();
   </script>
 </body>
 </html>
