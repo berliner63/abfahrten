@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ticker-Verwaltung</title>
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body { font-family: 'Roboto Condensed', sans-serif; background: #000; color: #fff; margin: 0; padding: 0 12px 40px; }
+    h1 { font-size: 22px; margin: 24px 0 6px; }
+    .subtitle { color: #aaa; font-size: 14px; margin-bottom: 24px; }
+    .card {
+      background: #0d0d0d;
+      border: 1px solid #333;
+      padding: 16px;
+      margin-bottom: 16px;
+      max-width: 720px;
+    }
+    label { display: block; font-size: 13px; color: #aaa; margin-bottom: 4px; }
+    input[type="text"], textarea {
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 16px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #444;
+      padding: 8px 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    textarea { resize: vertical; min-height: 72px; }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    button {
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 15px;
+      padding: 8px 16px;
+      border: 1px solid #555;
+      background: #1a1a1a;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover { background: #2a2a2a; }
+    button.primary { background: #1a3a1a; border-color: #2e7d32; color: #8bc34a; }
+    button.primary:hover { background: #1e4a1e; }
+    button.danger { background: #2a1010; border-color: #7d2e2e; color: #ef9a9a; }
+    button.danger:hover { background: #3a1414; }
+    #messageList { max-width: 720px; }
+    .msg-item {
+      background: #0d0d0d;
+      border: 1px solid #333;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .msg-item .msg-text {
+      flex: 1;
+      font-size: 15px;
+      color: #ffa500;
+      word-break: break-word;
+    }
+    .msg-item .msg-controls { display: flex; gap: 6px; flex-shrink: 0; }
+    .msg-item button { font-size: 13px; padding: 5px 10px; }
+    .empty-hint { color: #555; font-size: 14px; padding: 12px 0; }
+    .preview-bar {
+      max-width: 720px;
+      background: #0d0d0d;
+      border: 1px solid #333;
+      height: 32px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .preview-bar-inner {
+      display: inline-block;
+      white-space: nowrap;
+      animation: marquee-scroll 20s linear infinite;
+      color: #ffa500;
+      font-size: 14px;
+      line-height: 32px;
+      padding-left: 100%;
+    }
+    @keyframes marquee-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+    .section-title { font-size: 16px; font-weight: bold; color: #ccc; margin: 20px 0 8px; }
+    .back-link { display: inline-block; margin: 20px 0 0 0; color: #aaa; font-size: 14px; text-decoration: none; }
+    .back-link:hover { color: #fff; }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e4a1e;
+      border: 1px solid #2e7d32;
+      color: #8bc34a;
+      padding: 10px 20px;
+      font-size: 14px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .toast.show { opacity: 1; }
+    @media (max-width: 600px) {
+      h1 { font-size: 20px; }
+      input[type="text"], textarea { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Ticker-Verwaltung</h1>
+  <p class="subtitle">Eigene Meldungen für den Lauftext auf der Abfahrtsanzeige. Die Meldungen wechseln dort alle 30 Sekunden mit den API-Hinweisen ab.</p>
+
+  <div class="section-title">Vorschau</div>
+  <div class="preview-bar" id="previewBar" style="display:none;">
+    <span class="preview-bar-inner" id="previewText"></span>
+  </div>
+  <p class="empty-hint" id="previewEmpty">Noch keine Meldungen gespeichert.</p>
+
+  <div class="section-title">Neue Meldung hinzufügen</div>
+  <div class="card">
+    <label for="newMessage">Meldungstext</label>
+    <textarea id="newMessage" placeholder="z.B.: Achtung: Bauarbeiten zwischen Stendaler Str. und Hellersdorf – mit Verspätungen rechnen."></textarea>
+    <div class="btn-row">
+      <button class="primary" onclick="addMessage()">Hinzufügen</button>
+    </div>
+  </div>
+
+  <div class="section-title">Gespeicherte Meldungen</div>
+  <div id="messageList"></div>
+
+  <a class="back-link" href="./Fahrten.html">← Zur Abfahrtsanzeige</a>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_KEY = 'fahrten-custom-ticker-messages';
+
+    function loadMessages() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveMessages(msgs) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
+      } catch (e) {
+        showToast('Fehler beim Speichern (Speicherplatz voll?)', true);
+      }
+    }
+
+    function showToast(text, isError) {
+      const t = document.getElementById('toast');
+      t.textContent = text;
+      t.style.background = isError ? '#3a1414' : '#1e4a1e';
+      t.style.borderColor = isError ? '#7d2e2e' : '#2e7d32';
+      t.style.color = isError ? '#ef9a9a' : '#8bc34a';
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function addMessage() {
+      const val = document.getElementById('newMessage').value.trim();
+      if (!val) return;
+      const msgs = loadMessages();
+      msgs.push({ id: Date.now(), text: val });
+      saveMessages(msgs);
+      document.getElementById('newMessage').value = '';
+      render();
+      showToast('Meldung gespeichert.');
+    }
+
+    function deleteMessage(id) {
+      const msgs = loadMessages().filter(m => m.id !== id);
+      saveMessages(msgs);
+      render();
+      showToast('Meldung gelöscht.');
+    }
+
+    function startEdit(id) {
+      const msgs = loadMessages();
+      const msg = msgs.find(m => m.id === id);
+      if (!msg) return;
+      const item = document.querySelector(`[data-id="${id}"]`);
+      item.innerHTML = `
+        <div style="flex:1;">
+          <textarea style="font-family:'Roboto Condensed',sans-serif;font-size:15px;background:#111;color:#fff;border:1px solid #444;padding:8px 10px;width:100%;box-sizing:border-box;resize:vertical;" id="edit-${id}">${escapeHtml(msg.text)}</textarea>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="primary" onclick="saveEdit(${id})">Speichern</button>
+            <button onclick="render()">Abbrechen</button>
+          </div>
+        </div>`;
+    }
+
+    function saveEdit(id) {
+      const val = document.getElementById(`edit-${id}`).value.trim();
+      if (!val) return;
+      const msgs = loadMessages().map(m => m.id === id ? { ...m, text: val } : m);
+      saveMessages(msgs);
+      render();
+      showToast('Meldung gespeichert.');
+    }
+
+    function moveUp(id) {
+      const msgs = loadMessages();
+      const idx = msgs.findIndex(m => m.id === id);
+      if (idx <= 0) return;
+      [msgs[idx - 1], msgs[idx]] = [msgs[idx], msgs[idx - 1]];
+      saveMessages(msgs);
+      render();
+    }
+
+    function moveDown(id) {
+      const msgs = loadMessages();
+      const idx = msgs.findIndex(m => m.id === id);
+      if (idx < 0 || idx >= msgs.length - 1) return;
+      [msgs[idx], msgs[idx + 1]] = [msgs[idx + 1], msgs[idx]];
+      saveMessages(msgs);
+      render();
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function render() {
+      const msgs = loadMessages();
+      const list = document.getElementById('messageList');
+      const previewBar = document.getElementById('previewBar');
+      const previewText = document.getElementById('previewText');
+      const previewEmpty = document.getElementById('previewEmpty');
+
+      if (msgs.length === 0) {
+        list.innerHTML = '<p class="empty-hint">Keine Meldungen vorhanden.</p>';
+        previewBar.style.display = 'none';
+        previewEmpty.style.display = 'block';
+      } else {
+        previewBar.style.display = 'block';
+        previewEmpty.style.display = 'none';
+        const previewStr = msgs.map(m => m.text).join(' *** ');
+        previewText.textContent = previewStr;
+        const dur = Math.min(60, Math.max(10, Math.round(previewStr.length / 8)));
+        previewText.style.animationDuration = dur + 's';
+
+        list.innerHTML = msgs.map((m, i) => `
+          <div class="msg-item" data-id="${m.id}">
+            <span class="msg-text">${escapeHtml(m.text)}</span>
+            <div class="msg-controls">
+              ${i > 0 ? `<button title="Nach oben" onclick="moveUp(${m.id})">↑</button>` : ''}
+              ${i < msgs.length - 1 ? `<button title="Nach unten" onclick="moveDown(${m.id})">↓</button>` : ''}
+              <button onclick="startEdit(${m.id})">Bearbeiten</button>
+              <button class="danger" onclick="deleteMessage(${m.id})">Löschen</button>
+            </div>
+          </div>`).join('');
+      }
+    }
+
+    document.getElementById('newMessage').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addMessage();
+    });
+
+    render();
+  </script>
+</body>
+</html>

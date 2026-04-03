@@ -633,12 +633,61 @@
       }
     }
 
-    function updateRemarksTicker(depList) {
+    const CUSTOM_TICKER_KEY = 'fahrten-custom-ticker-messages';
+    let _tickerApiTexts = [];
+    let _tickerCustomTexts = [];
+    let _tickerPhase = 0; // 0 = API, 1 = custom
+    let _tickerInterval = null;
+
+    function loadCustomTickerMessages() {
+      try {
+        const raw = localStorage.getItem(CUSTOM_TICKER_KEY);
+        return raw ? JSON.parse(raw).map(m => m.text) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function showTickerPhase(phase) {
       const ticker = document.getElementById('remarksTicker');
       const tickerText = document.getElementById('remarksTickerText');
-      const texts = [];
-      // Standardhinweise (z.B. Fahrradmitnahme) ausfiltern
+      const texts = phase === 0 ? _tickerApiTexts : _tickerCustomTexts;
+      if (texts.length === 0) return;
+      const str = texts.join(' *** ');
+      tickerText.textContent = str;
+      const dur = Math.min(60, Math.max(15, Math.round(str.length / 8)));
+      tickerText.style.animationDuration = dur + 's';
+      // CSS-Animation neu starten
+      tickerText.style.animation = 'none';
+      tickerText.offsetHeight; // reflow
+      tickerText.style.animation = '';
+      ticker.style.display = 'block';
+    }
+
+    function startTickerRotation() {
+      if (_tickerInterval) clearInterval(_tickerInterval);
+      const hasBoth = _tickerApiTexts.length > 0 && _tickerCustomTexts.length > 0;
+      if (!hasBoth) {
+        const texts = _tickerApiTexts.length > 0 ? _tickerApiTexts : _tickerCustomTexts;
+        if (texts.length > 0) {
+          showTickerPhase(_tickerApiTexts.length > 0 ? 0 : 1);
+        } else {
+          document.getElementById('remarksTicker').style.display = 'none';
+        }
+        return;
+      }
+      // Beide Quellen vorhanden: alle 30 Sek. wechseln
+      _tickerPhase = 0;
+      showTickerPhase(0);
+      _tickerInterval = setInterval(() => {
+        _tickerPhase = _tickerPhase === 0 ? 1 : 0;
+        showTickerPhase(_tickerPhase);
+      }, 30000);
+    }
+
+    function updateRemarksTicker(depList) {
       const STANDARD_CODES = ['FK', 'BM', 'RB'];
+      const texts = [];
       depList.forEach(dep => {
         if (Array.isArray(dep.remarks)) {
           dep.remarks.forEach(r => {
@@ -648,15 +697,9 @@
           });
         }
       });
-      if (texts.length > 0) {
-        tickerText.textContent = texts.join(' *** ');
-        // Scroll-Dauer proportional zur Textlänge (min 15s, max 60s)
-        const duration = Math.min(60, Math.max(15, Math.round(texts.join(' *** ').length / 8)));
-        tickerText.style.animationDuration = duration + 's';
-        ticker.style.display = 'block';
-      } else {
-        ticker.style.display = 'none';
-      }
+      _tickerApiTexts = texts;
+      _tickerCustomTexts = loadCustomTickerMessages();
+      startTickerRotation();
     }
 
     function renderRows(depList) {
