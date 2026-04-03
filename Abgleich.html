@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Puenktlichkeitsabgleich</title>
+  <title>Pünktlichkeitsabgleich</title>
   <link rel="icon" type="image/png" href="./logo.png">
   <link rel="shortcut icon" href="./logo.png">
   <link rel="apple-touch-icon" href="./logo.png">
@@ -71,8 +71,8 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Puenktlichkeitsabgleich M.A.D.-Plan vs. BVG</h1>
-    <div class="sub">Stop: Stendaler Str./Quedlinburger Str. (900175011). Beruecksichtigt werden nur Fahrten, bei denen Betriebshof Marzahn spaeter im Linienverlauf liegt.</div>
+    <h1>Pünktlichkeitsabgleich Mad-Plan vs. BVG</h1>
+    <div class="sub">Stop: Stendaler Str./Quedlinburger Str. (900175011). Berücksichtigt werden nur Fahrten, bei denen Betriebshof Marzahn später im Linienverlauf liegt.</div>
 
     <div class="panel">
       <div class="controls">
@@ -104,7 +104,7 @@
     </table>
 
     <div class="note">
-      Parser-Ziel auf der M.A.D.-Seite: Eintraege im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Der Hauptabgleich nutzt nur Fahrten, die nach dieser Haltestelle noch den Betriebshof Marzahn anfahren. Die Alternativen davor/danach werden ueber alle Linien in derselben Fahrtrichtung ermittelt.
+      Parser-Ziel auf der Mad-Seite: Einträge im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Der Hauptabgleich nutzt nur Fahrten, die nach dieser Haltestelle noch den Betriebshof Marzahn anfahren. Die Alternativen davor/danach werden über alle Linien in derselben Fahrtrichtung ermittelt.
     </div>
   </div>
 
@@ -244,9 +244,9 @@
         return { cls: 'err', txt: deltaLabel };
       }
       if (delta === null) return { cls: 'err', txt: 'kein Treffer' };
-      if (Math.abs(delta) <= 1) return { cls: 'ok', txt: 'puenktlich' };
-      if (delta > 1) return { cls: 'warn', txt: '+' + delta + ' min spaeter' };
-      return { cls: 'err', txt: delta + ' min frueher' };
+      if (Math.abs(delta) <= 1) return { cls: 'ok', txt: 'pünktlich' };
+      if (delta > 1) return { cls: 'warn', txt: '+' + delta + ' min später' };
+      return { cls: 'err', txt: delta + ' min früher' };
     }
 
     function stopNameMatchesBetriebshof(name) {
@@ -371,7 +371,7 @@
           deltaLabel: 'API-Ausfall',
           altBefore: '-',
           altAfter: '-',
-          note: 'Keine Live-Daten verfuegbar'
+          note: 'Keine Live-Daten verfügbar'
         }));
       }
 
@@ -424,7 +424,7 @@
     function renderRows(rows) {
       const tbody = document.getElementById('rows');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="7">Keine passenden HH:MM | Linie-Eintraege fuer heute gefunden.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7">Keine passenden HH:MM | Linie-Einträge für heute gefunden.</td></tr>';
         document.getElementById('countsText').textContent = 'Treffer: 0';
         return;
       }
@@ -444,7 +444,7 @@
           '</tr>';
       }).join('');
 
-      document.getElementById('countsText').textContent = 'Treffer: ' + ok + ' / ' + rows.length + ' puenktlich';
+      document.getElementById('countsText').textContent = 'Treffer: ' + ok + ' / ' + rows.length + ' pünktlich';
     }
 
     async function loadAll() {
@@ -458,7 +458,7 @@
         lastPlanRows = parsePlanRows(planResult.value);
 
         if (!lastPlanRows.length) {
-          setStatus('Keine passenden Plan-Eintraege gefunden.', 'err');
+          setStatus('Keine passenden Plan-Einträge gefunden.', 'err');
           renderRows([]);
           return;
         }
