@@ -104,7 +104,7 @@
     </table>
 
     <div class="note">
-      Parser-Ziel auf der M.A.D.-Seite: Eintraege im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Der Hauptabgleich nutzt nur Fahrten, die nach dieser Haltestelle noch den Betriebshof Marzahn anfahren. Die Alternativen davor/danach werden ueber alle Linien der Haltestelle ermittelt.
+      Parser-Ziel auf der M.A.D.-Seite: Eintraege im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Der Hauptabgleich nutzt nur Fahrten, die nach dieser Haltestelle noch den Betriebshof Marzahn anfahren. Die Alternativen davor/danach werden ueber alle Linien in derselben Fahrtrichtung ermittelt.
     </div>
   </div>
 
@@ -358,7 +358,9 @@
 
     function matchRows(planRows, filteredDeps, allDeps, apiAvailable) {
       const candidates = mapDeparturesToCandidates(filteredDeps);
-      const allDirectionCandidates = mapDeparturesToCandidates(allDeps);
+      const allowedDirections = new Set(candidates.map((c) => c.direction).filter(Boolean));
+      const allDirectionCandidates = mapDeparturesToCandidates(allDeps)
+        .filter((c) => allowedDirections.size === 0 || allowedDirections.has(c.direction));
 
       if (!apiAvailable) {
         return planRows.map((p) => ({
