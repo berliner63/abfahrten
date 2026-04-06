@@ -121,7 +121,7 @@
 <body>
   <div class="wrap">
     <h1>Tram-Abweichungen</h1>
-    <div class="sub">Berlinweite Live-Übersicht der Tram-Fahrten mit der größten Verspätung oder Verfrühung, sortiert nach absoluter Abweichung.</div>
+    <div class="sub">Berlinweite Live-Übersicht der Tram-Fahrten mit den 5 größten Verspätungen und den 5 größten Verfrühungen.</div>
 
     <div class="panel">
       <div class="controls">
@@ -150,7 +150,7 @@
       </tbody>
     </table>
 
-    <div class="note">Die Liste basiert auf dem Radar-Endpunkt der BVG-API. Je Fahrt wird die nächste prognostizierte Haltestelle mit einer von 0 abweichenden Prognose angezeigt.</div>
+    <div class="note">Die Liste basiert auf dem Radar-Endpunkt der BVG-API. Je Fahrt wird die nächste prognostizierte Haltestelle mit einer von 0 abweichenden Prognose angezeigt. Dargestellt werden maximal 5 verspätete und 5 verfrühte Trams.</div>
   </div>
 
   <script>
@@ -165,7 +165,7 @@
       south: 52.338,
       east: 13.761
     };
-    const MAX_ROWS = 60;
+    const MAX_PER_GROUP = 5;
 
     let autoEnabled = true;
     let autoTimer = null;
@@ -248,13 +248,25 @@
         });
       });
 
-      rows.sort((a, b) => {
-        const absDiff = Math.abs(b.delayMinutes) - Math.abs(a.delayMinutes);
-        if (absDiff !== 0) return absDiff;
-        return new Date(a.planned).getTime() - new Date(b.planned).getTime();
-      });
+      const lateRows = rows
+        .filter((row) => row.delayMinutes > 0)
+        .sort((a, b) => {
+          const diff = b.delayMinutes - a.delayMinutes;
+          if (diff !== 0) return diff;
+          return new Date(a.planned).getTime() - new Date(b.planned).getTime();
+        })
+        .slice(0, MAX_PER_GROUP);
 
-      return rows.slice(0, MAX_ROWS);
+      const earlyRows = rows
+        .filter((row) => row.delayMinutes < 0)
+        .sort((a, b) => {
+          const diff = a.delayMinutes - b.delayMinutes;
+          if (diff !== 0) return diff;
+          return new Date(a.planned).getTime() - new Date(b.planned).getTime();
+        })
+        .slice(0, MAX_PER_GROUP);
+
+      return [...lateRows, ...earlyRows];
     }
 
     async function fetchRadarMovements() {
