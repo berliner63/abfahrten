@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bus-Abweichungen</title>
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="shortcut icon" href="./logo.png">
+  <link rel="apple-touch-icon" href="./logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      padding: 0 8px 24px;
+      background: #000;
+      color: #fff;
+      font-family: 'Roboto Condensed', sans-serif;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 1080px;
+      margin: 18px auto;
+    }
+    .header-line {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+    .sub {
+      color: #aaa;
+      font-size: 14px;
+      margin: 0;
+    }
+    .panel {
+      border: 1px solid #333;
+      background: #0d0d0d;
+      padding: 10px;
+      margin-bottom: 14px;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .orientation-hint {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      z-index: 1000;
+      max-width: calc(100vw - 32px);
+      padding: 10px 14px;
+      border: 1px solid #f9a825;
+      background: rgba(17, 17, 17, 0.96);
+      color: #ffd54f;
+      font-size: 15px;
+      line-height: 1.35;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .orientation-hint.visible {
+      opacity: 1;
+    }
+    button {
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 14px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+    button:hover { background: #1b1b1b; }
+    .meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 14px;
+      color: #c2c2c2;
+      margin-top: 10px;
+      align-items: baseline;
+    }
+    #statusText {
+      font-size: 18px;
+    }
+    #countsText {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .count-late {
+      color: #ffd54f;
+    }
+    .count-early {
+      color: #ff0000;
+    }
+    .ok { color: #8bc34a; }
+    .warn { color: #ffd54f; }
+    .err { color: #ef9a9a; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #000;
+    }
+    .table-section {
+      margin-top: 18px;
+    }
+    .table-title {
+      margin: 0 0 8px 0;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #111; }
+    tr:nth-child(even) { background: #0d0d0d; }
+    tr.late { border-left: 3px solid #f9a825; }
+    tr.early { border-left: 3px solid #c62828; }
+    th:nth-child(1), td:nth-child(1),
+    th:nth-child(3), td:nth-child(3),
+    th:nth-child(4), td:nth-child(4) {
+      white-space: nowrap;
+      width: 1%;
+    }
+    .ist-time { display: inline; }
+    .delay-chip {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 1px 6px;
+      border: 1px solid #333;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+    .delay-chip.late {
+      color: #f9a825;
+      border-color: #f9a825;
+    }
+    .delay-chip.early {
+      color: #c62828;
+      border-color: #c62828;
+    }
+    .note {
+      color: #9a9a9a;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    @media (max-width: 1024px), (pointer: coarse) {
+      h1 { font-size: 24px; }
+      .table-title { font-size: 20px; }
+      th, td { font-size: 14px; }
+      #statusText,
+      #countsText { font-size: 16px; }
+      th:nth-child(2), td:nth-child(2),
+      th:nth-child(5), td:nth-child(5) { word-break: break-word; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header-line">
+      <h1>Bus-Abweichungen</h1>
+      <div class="sub">Berlinweite Live-Übersicht der Bus-Fahrten mit den 5 größten Verspätungen und den 5 größten Verfrühungen.</div>
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <button id="refreshBtn" type="button">Jetzt aktualisieren</button>
+        <button id="toggleAutoBtn" type="button">Auto: an</button>
+      </div>
+      <div class="meta">
+        <div id="statusText">Status: wird geladen ...</div>
+        <div id="countsText">Busse: -</div>
+      </div>
+    </div>
+
+    <div id="orientationHint" class="orientation-hint">Auf Mobilgeräten bitte Queransicht verwenden.</div>
+
+    <div class="table-section">
+      <h2 class="table-title">Verfrühungen</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Linie</th>
+            <th>Ziel</th>
+            <th>Soll</th>
+            <th>Ist</th>
+            <th>Haltestelle</th>
+          </tr>
+        </thead>
+        <tbody id="earlyRows">
+          <tr><td colspan="5">Lade Daten ...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-section">
+      <h2 class="table-title">Verspätungen</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Linie</th>
+            <th>Ziel</th>
+            <th>Soll</th>
+            <th>Ist</th>
+            <th>Haltestelle</th>
+          </tr>
+        </thead>
+        <tbody id="lateRows">
+          <tr><td colspan="5">Lade Daten ...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="sourceText" class="note">Quelle: -</div>
+  </div>
+
+  <script>
+    const API_BASES = [
+      'https://v6.bvg.transport.rest',
+      'https://v6.vbb.transport.rest',
+      'https://v6.db.transport.rest'
+    ];
+    const BERLIN_BOUNDS = {
+      north: 52.675,
+      west: 13.088,
+      south: 52.338,
+      east: 13.761
+    };
+    const MAX_PER_GROUP = 5;
+
+    let autoEnabled = true;
+    let autoTimer = null;
+    let orientationHintTimer = null;
+
+    function setStatus(text, cls) {
+      const el = document.getElementById('statusText');
+      el.textContent = 'Status: ' + text;
+      el.className = cls || '';
+    }
+
+    function formatTime(value) {
+      if (!value) return '-';
+      return new Date(value).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function cleanDisplayName(value) {
+      return String(value || '-')
+        .replace(/\s*\(Berlin\)\s*/gi, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim() || '-';
+    }
+
+    function cleanStopName(value) {
+      return String(value || '-')
+        .replace(/\s*\[[^\]]*\]\s*/g, ' ')
+        .replace(/\s*\(Berlin\)\s*/gi, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim() || '-';
+    }
+
+    function isMobilePortrait() {
+      const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+      const narrowScreen = window.innerWidth <= 1024;
+      return coarsePointer && narrowScreen && window.innerHeight > window.innerWidth;
+    }
+
+    function hideOrientationHint() {
+      const hint = document.getElementById('orientationHint');
+      hint.classList.remove('visible');
+      if (orientationHintTimer) {
+        clearTimeout(orientationHintTimer);
+        orientationHintTimer = null;
+      }
+    }
+
+    function updateOrientationHint() {
+      const hint = document.getElementById('orientationHint');
+      if (!isMobilePortrait()) {
+        hideOrientationHint();
+        return;
+      }
+
+      hint.classList.add('visible');
+      if (orientationHintTimer) {
+        clearTimeout(orientationHintTimer);
+      }
+      orientationHintTimer = setTimeout(() => {
+        hint.classList.remove('visible');
+        orientationHintTimer = null;
+      }, 10000);
+    }
+
+    function isMatchingMovement(movement) {
+      const line = movement && movement.line ? movement.line : null;
+      if (!line) return false;
+      const productName = String(line.productName || '').toLowerCase();
+      return line.product === 'bus' || productName === 'bus';
+    }
+
+    function getDelayInfo(stopover) {
+      if (!stopover) return null;
+
+      if (stopover.plannedDeparture && stopover.departure && typeof stopover.departureDelay === 'number') {
+        return {
+          planned: stopover.plannedDeparture,
+          actual: stopover.departure,
+          delayMinutes: Math.round(stopover.departureDelay / 60),
+          stopName: cleanStopName(stopover.stop && stopover.stop.name ? stopover.stop.name : '-')
+        };
+      }
+
+      if (stopover.plannedArrival && stopover.arrival && typeof stopover.arrivalDelay === 'number') {
+        return {
+          planned: stopover.plannedArrival,
+          actual: stopover.arrival,
+          delayMinutes: Math.round(stopover.arrivalDelay / 60),
+          stopName: cleanStopName(stopover.stop && stopover.stop.name ? stopover.stop.name : '-')
+        };
+      }
+
+      return null;
+    }
+
+    function extractRelevantStopover(movement) {
+      const stopovers = Array.isArray(movement.nextStopovers) ? movement.nextStopovers : [];
+      for (const stopover of stopovers) {
+        const info = getDelayInfo(stopover);
+        if (info && info.delayMinutes !== 0) {
+          return info;
+        }
+      }
+      return null;
+    }
+
+    function normalizeMovements(movements) {
+      const rows = [];
+      const seen = new Set();
+
+      movements.forEach((movement) => {
+        if (!isMatchingMovement(movement)) return;
+        const info = extractRelevantStopover(movement);
+        if (!info) return;
+
+        const tripId = String(movement.tripId || '');
+        const lineName = movement.line && movement.line.name ? movement.line.name : '-';
+        const key = tripId + '|' + info.stopName + '|' + info.planned;
+        if (seen.has(key)) return;
+        seen.add(key);
+
+        rows.push({
+          line: lineName,
+          direction: cleanDisplayName(movement.direction || '-'),
+          planned: info.planned,
+          actual: info.actual,
+          stopName: info.stopName,
+          delayMinutes: info.delayMinutes,
+          rowClass: info.delayMinutes > 0 ? 'late' : 'early'
+        });
+      });
+
+      const allLateRows = rows
+        .filter((row) => row.delayMinutes > 0)
+        .sort((a, b) => {
+          const diff = b.delayMinutes - a.delayMinutes;
+          if (diff !== 0) return diff;
+          return new Date(a.planned).getTime() - new Date(b.planned).getTime();
+        });
+
+      const allEarlyRows = rows
+        .filter((row) => row.delayMinutes < 0)
+        .sort((a, b) => {
+          const diff = a.delayMinutes - b.delayMinutes;
+          if (diff !== 0) return diff;
+          return new Date(a.planned).getTime() - new Date(b.planned).getTime();
+        });
+
+      return {
+        lateRows: allLateRows.slice(0, MAX_PER_GROUP),
+        earlyRows: allEarlyRows.slice(0, MAX_PER_GROUP),
+        lateCount: allLateRows.length,
+        earlyCount: allEarlyRows.length,
+        totalCount: allLateRows.length + allEarlyRows.length
+      };
+    }
+
+    async function fetchRadarMovements() {
+      let lastErr = null;
+      for (const base of API_BASES) {
+        try {
+          const url = base + '/radar?' + new URLSearchParams({
+            north: BERLIN_BOUNDS.north,
+            west: BERLIN_BOUNDS.west,
+            south: BERLIN_BOUNDS.south,
+            east: BERLIN_BOUNDS.east,
+            results: '600',
+            frames: '0',
+            duration: '120',
+            polylines: 'false',
+            language: 'de',
+            suburban: 'false',
+            subway: 'false',
+            tram: 'false',
+            bus: 'true',
+            ferry: 'false',
+            express: 'false',
+            regional: 'false'
+          }).toString();
+
+          const response = await fetch(url);
+          if (!response.ok) throw new Error('HTTP ' + response.status + ' @ ' + base);
+          const data = await response.json();
+          const movements = Array.isArray(data.movements) ? data.movements : [];
+          document.getElementById('sourceText').textContent = 'Quelle: ' + base + '/radar';
+          return movements;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error('Radar-API nicht erreichbar');
+    }
+
+    function renderTableRows(rows, targetId, emptyText) {
+      const tbody = document.getElementById(targetId);
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5">' + emptyText + '</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map((row) => {
+        const chipClass = row.delayMinutes > 0 ? 'late' : 'early';
+        const chipText = (row.delayMinutes > 0 ? '+' : '') + row.delayMinutes + ' min';
+        return '<tr class="' + row.rowClass + '">' +
+          '<td>' + row.line + '</td>' +
+          '<td>' + row.direction + '</td>' +
+          '<td>' + formatTime(row.planned) + '</td>' +
+          '<td><span class="ist-time">' + formatTime(row.actual) + '</span><span class="delay-chip ' + chipClass + '">' + chipText + '</span></td>' +
+          '<td>' + row.stopName + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    function renderRows(data) {
+      document.getElementById('countsText').innerHTML = 'Busse: ' + data.totalCount + ' | verspätet: <span class="count-late">' + data.lateCount + '</span> | verfrüht: <span class="count-early">' + data.earlyCount + '</span>';
+
+      renderTableRows(data.earlyRows, 'earlyRows', 'Keine aktuellen verfrühten Bus-Fahrten gefunden.');
+      renderTableRows(data.lateRows, 'lateRows', 'Keine aktuellen verspäteten Bus-Fahrten gefunden.');
+    }
+
+    async function loadAll() {
+      try {
+        setStatus('Lade Radar-Daten ...', 'warn');
+        const movements = await fetchRadarMovements();
+        const rows = normalizeMovements(movements);
+        renderRows(rows);
+        setStatus('Aktualisiert (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
+      } catch (e) {
+        setStatus('Fehler: ' + e.message, 'err');
+        document.getElementById('earlyRows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
+        document.getElementById('lateRows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
+        document.getElementById('countsText').textContent = 'Busse: -';
+      }
+    }
+
+    function toggleAuto() {
+      autoEnabled = !autoEnabled;
+      const btn = document.getElementById('toggleAutoBtn');
+      btn.textContent = 'Auto: ' + (autoEnabled ? 'an' : 'aus');
+      if (autoEnabled) {
+        autoTimer = setInterval(loadAll, 60000);
+      } else if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', loadAll);
+    document.getElementById('toggleAutoBtn').addEventListener('click', toggleAuto);
+    window.addEventListener('resize', updateOrientationHint);
+    window.addEventListener('orientationchange', updateOrientationHint);
+
+    loadAll();
+    updateOrientationHint();
+    autoTimer = setInterval(loadAll, 60000);
+  </script>
+</body>
+</html>
