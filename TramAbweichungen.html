@@ -240,7 +240,9 @@
 
     function cleanStopName(value) {
       return String(value || '-')
-        .replace(/\s*\(Berlin\)\s*$/i, '')
+        .replace(/\s*\[[^\]]*\]\s*/g, ' ')
+        .replace(/\s*\(Berlin\)\s*/gi, ' ')
+        .replace(/\s{2,}/g, ' ')
         .trim() || '-';
     }
 
