@@ -73,6 +73,14 @@
       table-layout: fixed;
       background: #000;
     }
+    .table-section {
+      margin-top: 18px;
+    }
+    .table-title {
+      margin: 0 0 8px 0;
+      font-size: 22px;
+      line-height: 1.2;
+    }
     th, td {
       border: 1px solid #333;
       padding: 8px 7px;
@@ -88,10 +96,10 @@
     th:nth-child(3), td:nth-child(3) { width: 12%; }
     th:nth-child(4), td:nth-child(4) { width: 14%; }
     th:nth-child(5), td:nth-child(5) { width: 40%; }
-    .ist-time { display: block; }
+    .ist-time { display: inline; }
     .delay-chip {
       display: inline-block;
-      margin-top: 4px;
+      margin-left: 8px;
       padding: 1px 6px;
       border: 1px solid #333;
       font-size: 13px;
@@ -112,6 +120,7 @@
     }
     @media (max-width: 1024px), (pointer: coarse) {
       h1 { font-size: 28px; }
+      .table-title { font-size: 20px; }
       th, td { font-size: 14px; }
       th:nth-child(2), td:nth-child(2),
       th:nth-child(5), td:nth-child(5) { word-break: break-word; }
@@ -135,20 +144,41 @@
       </div>
     </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Linie</th>
-          <th>Ziel</th>
-          <th>Soll</th>
-          <th>Ist</th>
-          <th>Haltestelle</th>
-        </tr>
-      </thead>
-      <tbody id="rows">
-        <tr><td colspan="5">Lade Daten ...</td></tr>
-      </tbody>
-    </table>
+    <div class="table-section">
+      <h2 class="table-title">Verfrühungen</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Linie</th>
+            <th>Ziel</th>
+            <th>Soll</th>
+            <th>Ist</th>
+            <th>Haltestelle</th>
+          </tr>
+        </thead>
+        <tbody id="earlyRows">
+          <tr><td colspan="5">Lade Daten ...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-section">
+      <h2 class="table-title">Verspätungen</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Linie</th>
+            <th>Ziel</th>
+            <th>Soll</th>
+            <th>Ist</th>
+            <th>Haltestelle</th>
+          </tr>
+        </thead>
+        <tbody id="lateRows">
+          <tr><td colspan="5">Lade Daten ...</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="note">Die Liste basiert auf dem Radar-Endpunkt der BVG-API. Je Fahrt wird die nächste prognostizierte Haltestelle mit einer von 0 abweichenden Prognose angezeigt. Dargestellt werden maximal 5 verspätete und 5 verfrühte Trams.</div>
   </div>
@@ -305,17 +335,12 @@
       throw lastErr || new Error('Radar-API nicht erreichbar');
     }
 
-    function renderRows(rows) {
-      const tbody = document.getElementById('rows');
+    function renderTableRows(rows, targetId, emptyText) {
+      const tbody = document.getElementById(targetId);
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5">Keine aktuellen Tram-Abweichungen gefunden.</td></tr>';
-        document.getElementById('countsText').textContent = 'Trams: 0';
+        tbody.innerHTML = '<tr><td colspan="5">' + emptyText + '</td></tr>';
         return;
       }
-
-      const lateCount = rows.filter((r) => r.delayMinutes > 0).length;
-      const earlyCount = rows.filter((r) => r.delayMinutes < 0).length;
-      document.getElementById('countsText').textContent = 'Trams: ' + rows.length + ' | verspätet: ' + lateCount + ' | verfrüht: ' + earlyCount;
 
       tbody.innerHTML = rows.map((row) => {
         const chipClass = row.delayMinutes > 0 ? 'late' : 'early';
@@ -330,6 +355,16 @@
       }).join('');
     }
 
+    function renderRows(rows) {
+      const lateRows = rows.filter((r) => r.delayMinutes > 0);
+      const earlyRows = rows.filter((r) => r.delayMinutes < 0);
+
+      document.getElementById('countsText').textContent = 'Trams: ' + rows.length + ' | verspätet: ' + lateRows.length + ' | verfrüht: ' + earlyRows.length;
+
+      renderTableRows(earlyRows, 'earlyRows', 'Keine aktuellen verfrühten Trams gefunden.');
+      renderTableRows(lateRows, 'lateRows', 'Keine aktuellen verspäteten Trams gefunden.');
+    }
+
     async function loadAll() {
       try {
         setStatus('Lade Radar-Daten ...', 'warn');
@@ -339,7 +374,8 @@
         setStatus('Aktualisiert (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
       } catch (e) {
         setStatus('Fehler: ' + e.message, 'err');
-        document.getElementById('rows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
+        document.getElementById('earlyRows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
+        document.getElementById('lateRows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
         document.getElementById('countsText').textContent = 'Trams: -';
       }
     }
