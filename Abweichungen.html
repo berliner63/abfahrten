@@ -87,6 +87,20 @@
     .nav-button.ubahn .nav-accent {
       background: #005ca9;
     }
+    .footer-link {
+      margin: 14px 0 0 0;
+      text-align: center;
+      font-size: 13px;
+      color: #a0a0a0;
+    }
+    .footer-link a {
+      color: #a0a0a0;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .footer-link a:hover {
+      color: #ccc;
+    }
     .modal-overlay {
       display: none;
       position: fixed;
@@ -187,6 +201,7 @@
       <a class="nav-button sbahn" href="./SBahnAbweichungen.html"><span class="nav-accent" aria-hidden="true"></span><span class="nav-label">S-Bahn</span></a>
       <a class="nav-button ubahn" href="./UBahnAbweichungen.html"><span class="nav-accent" aria-hidden="true"></span><span class="nav-label">U-Bahn</span></a>
     </div>
+    <div class="footer-link"><a onclick="openImpressum()">Impressum</a></div>
 
     <div class="modal-overlay" id="impressumModal">
       <div class="modal-content">
