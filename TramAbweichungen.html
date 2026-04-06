@@ -53,9 +53,26 @@
       flex-wrap: wrap;
       align-items: center;
     }
-    .controls-note {
-      color: #c2c2c2;
-      font-size: 14px;
+    .orientation-hint {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      z-index: 1000;
+      max-width: calc(100vw - 32px);
+      padding: 10px 14px;
+      border: 1px solid #f9a825;
+      background: rgba(17, 17, 17, 0.96);
+      color: #ffd54f;
+      font-size: 15px;
+      line-height: 1.35;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .orientation-hint.visible {
+      opacity: 1;
     }
     button {
       font-family: 'Roboto Condensed', sans-serif;
@@ -166,13 +183,14 @@
       <div class="controls">
         <button id="refreshBtn" type="button">Jetzt aktualisieren</button>
         <button id="toggleAutoBtn" type="button">Auto: an</button>
-        <div class="controls-note">Auf Mobilgeräten bitte Queransicht verwenden.</div>
       </div>
       <div class="meta">
         <div id="statusText">Status: wird geladen ...</div>
         <div id="countsText">Trams: -</div>
       </div>
     </div>
+
+    <div id="orientationHint" class="orientation-hint">Auf Mobilgeräten bitte Queransicht verwenden.</div>
 
     <div class="table-section">
       <h2 class="table-title">Verfrühungen</h2>
@@ -230,6 +248,7 @@
 
     let autoEnabled = true;
     let autoTimer = null;
+  let orientationHintTimer = null;
 
     function setStatus(text, cls) {
       const el = document.getElementById('statusText');
@@ -255,6 +274,38 @@
         .replace(/\s*\(Berlin\)\s*/gi, ' ')
         .replace(/\s{2,}/g, ' ')
         .trim() || '-';
+    }
+
+    function isMobilePortrait() {
+      const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+      const narrowScreen = window.innerWidth <= 1024;
+      return coarsePointer && narrowScreen && window.innerHeight > window.innerWidth;
+    }
+
+    function hideOrientationHint() {
+      const hint = document.getElementById('orientationHint');
+      hint.classList.remove('visible');
+      if (orientationHintTimer) {
+        clearTimeout(orientationHintTimer);
+        orientationHintTimer = null;
+      }
+    }
+
+    function updateOrientationHint() {
+      const hint = document.getElementById('orientationHint');
+      if (!isMobilePortrait()) {
+        hideOrientationHint();
+        return;
+      }
+
+      hint.classList.add('visible');
+      if (orientationHintTimer) {
+        clearTimeout(orientationHintTimer);
+      }
+      orientationHintTimer = setTimeout(() => {
+        hint.classList.remove('visible');
+        orientationHintTimer = null;
+      }, 3000);
     }
 
     function isTramMovement(movement) {
@@ -444,8 +495,11 @@
 
     document.getElementById('refreshBtn').addEventListener('click', loadAll);
     document.getElementById('toggleAutoBtn').addEventListener('click', toggleAuto);
+    window.addEventListener('resize', updateOrientationHint);
+    window.addEventListener('orientationchange', updateOrientationHint);
 
     loadAll();
+    updateOrientationHint();
     autoTimer = setInterval(loadAll, 60000);
   </script>
 </body>
