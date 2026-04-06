@@ -249,7 +249,7 @@
 </head>
 <body>
   <div class="header-row">
-    <h1 id="pageTitle">U Hellersdorf (Berlin)</h1>
+    <h1 id="pageTitle">U Hellersdorf</h1>
     <button id="toggleControlsButton" class="toggle-controls" type="button">Suche ausblenden</button>
   </div>
   <div class="controls" id="searchControls">
@@ -333,9 +333,13 @@
     const MAX_RETRIES_PER_ENDPOINT = 1;
     const CACHE_PREFIX = 'fahrten-cache-v1:';
     const DEFAULT_STOP_ID = '900175007';
-    const DEFAULT_STOP_NAME = 'U Hellersdorf (Berlin)';
+    const DEFAULT_STOP_NAME = 'U Hellersdorf';
     let selectedStopId = DEFAULT_STOP_ID;
     let selectedStopName = DEFAULT_STOP_NAME;
+
+    function cleanDisplayName(value) {
+      return String(value || '').replace(/\s*\(Berlin\)\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+    }
 
     function setDataStatus(text, mode) {
       const el = document.getElementById('dataStatus');
@@ -475,13 +479,13 @@
     }
 
     function updateTitle() {
-      document.getElementById('pageTitle').textContent = `${selectedStopName}`;
+      document.getElementById('pageTitle').textContent = cleanDisplayName(selectedStopName);
     }
 
     function updateUrl(stopId, stopName) {
       const url = new URL(window.location.href);
       url.searchParams.set('stopId', stopId);
-      url.searchParams.set('stopName', stopName);
+      url.searchParams.set('stopName', cleanDisplayName(stopName));
       window.history.replaceState({}, '', url.toString());
     }
 
@@ -493,7 +497,7 @@
         selectedStopId = stopId;
       }
       if (stopName) {
-        selectedStopName = stopName;
+        selectedStopName = cleanDisplayName(stopName);
       }
     }
 
@@ -503,8 +507,8 @@
       stops.forEach((stop, index) => {
         const option = document.createElement('option');
         option.value = stop.id;
-        option.textContent = stop.name;
-        option.dataset.name = stop.name;
+        option.textContent = cleanDisplayName(stop.name);
+        option.dataset.name = cleanDisplayName(stop.name);
         if (index === 0) option.selected = true;
         select.appendChild(option);
       });
@@ -526,7 +530,7 @@
         const result = await requestAcrossEndpoints(`/stops/${encodeURIComponent(stopId)}`);
         const data = result.data;
         if (data && data.id && data.name) {
-          return { id: data.id, name: data.name, type: data.type || 'stop' };
+          return { id: data.id, name: cleanDisplayName(data.name), type: data.type || 'stop' };
         }
       } catch (e) {
         return null;
@@ -621,7 +625,7 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${dep.line && dep.line.name ? dep.line.name : ''}</td>
-          <td>${(dep.direction || '').replace(/->/g, '>')}</td>
+          <td>${cleanDisplayName(dep.direction || '').replace(/->/g, '>')}</td>
           <td>${dep.plannedWhen ? formatTime(dep.plannedWhen) : ''}</td>
           <td><span class="${istClass}">${istText}</span></td>
         `;
@@ -660,7 +664,7 @@
       const option = select.options[select.selectedIndex];
       if (!option || !option.value) return;
       selectedStopId = option.value;
-      selectedStopName = option.dataset.name || option.textContent;
+      selectedStopName = cleanDisplayName(option.dataset.name || option.textContent);
       updateUrl(selectedStopId, selectedStopName);
       document.getElementById('stopQuery').value = '';
       const controls = document.getElementById('searchControls');
@@ -691,7 +695,7 @@
     document.getElementById('searchControls').style.display = 'none';
     document.getElementById('toggleControlsButton').textContent = 'Suche einblenden';
     document.getElementById('stopQuery').value = '';
-    fillStopSelect([{ id: selectedStopId, name: selectedStopName }]);
+    fillStopSelect([{ id: selectedStopId, name: cleanDisplayName(selectedStopName) }]);
     updatePageNote();
     loadDepartures();
     setInterval(loadDepartures, 60000);

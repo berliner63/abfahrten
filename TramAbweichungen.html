@@ -295,7 +295,7 @@
 
         rows.push({
           line: lineName,
-          direction: movement.direction || '-',
+          direction: cleanDisplayName(movement.direction || '-'),
           planned: info.planned,
           actual: info.actual,
           stopName: info.stopName,

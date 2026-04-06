@@ -370,7 +370,7 @@
           id: idx,
           line: normalizeLine(d.line && d.line.name ? d.line.name : ''),
           actual: d.when ? new Date(d.when) : (d.plannedWhen ? new Date(d.plannedWhen) : null),
-          direction: d.direction || ''
+          direction: String(d.direction || '').replace(/\s*\(Berlin\)\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim()
         }))
         .filter((d) => d.actual && d.line);
     }

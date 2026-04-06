@@ -34,6 +34,10 @@
 </table>
 
 <script>
+function cleanDisplayName(value) {
+    return String(value || "").replace(/\s*\(Berlin\)\s*/gi, " ").replace(/\s{2,}/g, " ").trim();
+}
+
 // Distanzberechnung
 function distance(a, b) {
     const R = 6371e3;
@@ -64,7 +68,7 @@ async function loadData() {
 
         stops = tripData[0].stopovers.map(s => ({
             id: s.stop.id,
-            name: s.stop.name,
+            name: cleanDisplayName(s.stop.name),
             location: s.stop.location
         }));
     } catch (e) {
@@ -105,8 +109,8 @@ async function loadData() {
             const row = document.createElement("tr");
             row.innerHTML = `
                 <td>${v.tripId || "–"}</td>
-                <td>${v.direction || "–"}</td>
-                <td>${nearest.stop.name}</td>
+                <td>${cleanDisplayName(v.direction) || "–"}</td>
+                <td>${cleanDisplayName(nearest.stop.name)}</td>
                 <td>${Math.round(nearest.dist)} m</td>
                 <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
             `;
@@ -139,8 +143,8 @@ async function loadData() {
             const row = document.createElement("tr");
             row.innerHTML = `
                 <td>–</td>
-                <td>${d.direction}</td>
-                <td>${d.stop.name}</td>
+                <td>${cleanDisplayName(d.direction)}</td>
+                <td>${cleanDisplayName(d.stop.name)}</td>
                 <td>–</td>
                 <td>${d.delay ? (d.delay/60).toFixed(1) + " min" : "0 min"}</td>
             `;

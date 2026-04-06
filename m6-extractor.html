@@ -19,6 +19,10 @@
   <button onclick="filterM6()">Filtern</button>
   <div class="result" id="output"></div>
   <script>
+    function cleanDisplayName(value) {
+      return String(value || '').replace(/\s*\(Berlin\)\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+    }
+
     function filterM6() {
       const input = document.getElementById('jsonInput').value;
       let data;
@@ -34,7 +38,7 @@
         return;
       }
       document.getElementById('output').innerHTML = m6.map((f, i) =>
-        `<div class='fahrzeug'>#${i+1}: Linie: <b>${f.line.name}</b>, Richtung: <b>${f.direction || '?'}</b>, Position: <b>${f.location?.latitude}, ${f.location?.longitude}</b>, Fahrzeug-ID: <b>${f.id}</b></div>`
+        `<div class='fahrzeug'>#${i+1}: Linie: <b>${f.line.name}</b>, Richtung: <b>${cleanDisplayName(f.direction) || '?'}</b>, Position: <b>${f.location?.latitude}, ${f.location?.longitude}</b>, Fahrzeug-ID: <b>${f.id}</b></div>`
       ).join('');
     }
   </script>
