@@ -231,6 +231,13 @@
       return new Date(value).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
     }
 
+    function cleanDisplayName(value) {
+      return String(value || '-')
+        .replace(/\s*\(Berlin\)\s*/gi, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim() || '-';
+    }
+
     function cleanStopName(value) {
       return String(value || '-')
         .replace(/\s*\(Berlin\)\s*$/i, '')
