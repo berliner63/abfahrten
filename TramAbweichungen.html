@@ -80,6 +80,12 @@
       font-weight: 700;
       color: #fff;
     }
+    .count-late {
+      color: #ef9a9a;
+    }
+    .count-early {
+      color: #ffd54f;
+    }
     .ok { color: #8bc34a; }
     .warn { color: #ffd54f; }
     .err { color: #ef9a9a; }
@@ -398,7 +404,7 @@
       const lateRows = data.lateRows;
       const earlyRows = data.earlyRows;
 
-      document.getElementById('countsText').textContent = 'Trams: ' + data.totalCount + ' | verspätet: ' + data.lateCount + ' | verfrüht: ' + data.earlyCount;
+      document.getElementById('countsText').innerHTML = 'Trams: ' + data.totalCount + ' | verspätet: <span class="count-late">' + data.lateCount + '</span> | verfrüht: <span class="count-early">' + data.earlyCount + '</span>';
 
       renderTableRows(earlyRows, 'earlyRows', 'Keine aktuellen verfrühten Trams gefunden.');
       renderTableRows(lateRows, 'lateRows', 'Keine aktuellen verspäteten Trams gefunden.');
