@@ -186,7 +186,7 @@
       </div>
       <div class="meta">
         <div id="statusText">Status: wird geladen ...</div>
-        <div id="countsText">Trams: -</div>
+        <div id="countsText">Unpünktliche Trams: -</div>
       </div>
     </div>
 
@@ -460,7 +460,7 @@
       const lateRows = data.lateRows;
       const earlyRows = data.earlyRows;
 
-      document.getElementById('countsText').innerHTML = 'Trams: ' + data.totalCount + ' | verspätet: <span class="count-late">' + data.lateCount + '</span> | verfrüht: <span class="count-early">' + data.earlyCount + '</span>';
+      document.getElementById('countsText').innerHTML = 'Unpünktliche Trams: ' + data.totalCount + ' | verspätet: <span class="count-late">' + data.lateCount + '</span> | verfrüht: <span class="count-early">' + data.earlyCount + '</span>';
 
       renderTableRows(earlyRows, 'earlyRows', 'Keine aktuellen verfrühten Trams gefunden.');
       renderTableRows(lateRows, 'lateRows', 'Keine aktuellen verspäteten Trams gefunden.');
@@ -477,7 +477,7 @@
         setStatus('Fehler: ' + e.message, 'err');
         document.getElementById('earlyRows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
         document.getElementById('lateRows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
-        document.getElementById('countsText').textContent = 'Trams: -';
+        document.getElementById('countsText').textContent = 'Unpünktliche Trams: -';
       }
     }
 

@@ -186,7 +186,7 @@
       </div>
       <div class="meta">
         <div id="statusText">Status: wird geladen ...</div>
-        <div id="countsText">U-Bahnen: -</div>
+        <div id="countsText">Unpünktliche U-Bahnen: -</div>
       </div>
     </div>
 
@@ -457,7 +457,7 @@
     }
 
     function renderRows(data) {
-      document.getElementById('countsText').innerHTML = 'U-Bahnen: ' + data.totalCount + ' | verspätet: <span class="count-late">' + data.lateCount + '</span> | verfrüht: <span class="count-early">' + data.earlyCount + '</span>';
+      document.getElementById('countsText').innerHTML = 'Unpünktliche U-Bahnen: ' + data.totalCount + ' | verspätet: <span class="count-late">' + data.lateCount + '</span> | verfrüht: <span class="count-early">' + data.earlyCount + '</span>';
 
       renderTableRows(data.earlyRows, 'earlyRows', 'Keine aktuellen verfrühten U-Bahn-Fahrten gefunden.');
       renderTableRows(data.lateRows, 'lateRows', 'Keine aktuellen verspäteten U-Bahn-Fahrten gefunden.');
@@ -474,7 +474,7 @@
         setStatus('Fehler: ' + e.message, 'err');
         document.getElementById('earlyRows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
         document.getElementById('lateRows').innerHTML = '<tr><td colspan="5">Fehler beim Laden der Daten.</td></tr>';
-        document.getElementById('countsText').textContent = 'U-Bahnen: -';
+        document.getElementById('countsText').textContent = 'Unpünktliche U-Bahnen: -';
       }
     }
 
