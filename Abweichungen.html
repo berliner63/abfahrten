@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Abweichungen</title>
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="shortcut icon" href="./logo.png">
+  <link rel="apple-touch-icon" href="./logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      box-sizing: border-box;
+      background: #000;
+      color: #fff;
+      font-family: 'Roboto Condensed', sans-serif;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 460px;
+    }
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 34px;
+      line-height: 1.1;
+      text-align: center;
+    }
+    .sub {
+      margin: 0 0 20px 0;
+      color: #aaa;
+      font-size: 15px;
+      text-align: center;
+    }
+    .buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .nav-button {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px 16px;
+      border: 1px solid #333;
+      background: #111;
+      color: #fff;
+      text-decoration: none;
+      font-size: 22px;
+      line-height: 1.2;
+      text-align: center;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .nav-button:hover {
+      background: #1b1b1b;
+      border-color: #555;
+    }
+    .nav-button.tram {
+      border-left: 4px solid #f9a825;
+    }
+    .nav-button.bus {
+      border-left: 4px solid #29b6f6;
+    }
+    .nav-button.sbahn {
+      border-left: 4px solid #43a047;
+    }
+    .nav-button.ubahn {
+      border-left: 4px solid #1e88e5;
+    }
+    @media (max-width: 1024px), (pointer: coarse) {
+      h1 {
+        font-size: 28px;
+      }
+      .sub {
+        font-size: 14px;
+      }
+      .nav-button {
+        font-size: 20px;
+        padding: 16px 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Abweichungen</h1>
+    <p class="sub">Wähle eine Übersicht für Tram, Bus, S-Bahn oder U-Bahn.</p>
+
+    <div class="buttons">
+      <a class="nav-button tram" href="./TramAbweichungen.html">Tram-Abweichungen</a>
+      <a class="nav-button bus" href="./BusAbweichungen.html">Bus-Abweichungen</a>
+      <a class="nav-button sbahn" href="./SBahnAbweichungen.html">S-Bahn-Abweichungen</a>
+      <a class="nav-button ubahn" href="./UBahnAbweichungen.html">U-Bahn-Abweichungen</a>
+    </div>
+  </div>
+</body>
+</html>
