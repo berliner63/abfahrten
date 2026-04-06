@@ -93,17 +93,13 @@
     .nav-button.ubahn .nav-icon {
       padding: 5px;
     }
-    .page-note {
-      width: 100%;
-      margin: 14px auto 0 auto;
-      padding: 0 8px;
-      color: #a0a0a0;
-      font-size: 14px;
-      text-align: left;
-      box-sizing: border-box;
+    .note {
+      margin: 14px 0 0 0;
+      color: #9a9a9a;
+      font-size: 13px;
     }
-    .page-note a { color: #a0a0a0; cursor: pointer; text-decoration: underline; }
-    .page-note a:hover { color: #ccc; }
+    .note a { color: #a0a0a0; cursor: pointer; text-decoration: underline; }
+    .note a:hover { color: #ccc; }
     .modal-overlay {
       display: none;
       position: fixed;
@@ -191,9 +187,6 @@
         width: 36px;
         height: 36px;
       }
-      .page-note {
-        font-size: 15px;
-      }
     }
   </style>
 </head>
@@ -208,7 +201,7 @@
       <a class="nav-button sbahn" href="./SBahnAbweichungen.html"><span class="nav-icon" aria-hidden="true"><img src="./logos/sbahn.svg" alt=""></span><span class="nav-label">S-Bahn-Abweichungen</span></a>
       <a class="nav-button ubahn" href="./UBahnAbweichungen.html"><span class="nav-icon" aria-hidden="true"><img src="./logos/ubahn.svg" alt=""></span><span class="nav-label">U-Bahn-Abweichungen</span></a>
     </div>
-    <div class="page-note" id="pageNote">Stand: wird geladen ...</div>
+    <div class="note">Quelle: Seitenuebersicht | <a onclick="openImpressum()">Impressum</a></div>
 
     <div class="modal-overlay" id="impressumModal">
       <div class="modal-content">
@@ -239,9 +232,6 @@
     </div>
   </div>
   <script>
-    const PAGE_VERSION = 'v2026-04-06-01';
-    const PAGE_CHANGED_AT_FALLBACK = '2026-04-06T12:00:00+02:00';
-
     function openImpressum() {
       document.getElementById('impressumModal').classList.add('visible');
     }
@@ -250,55 +240,11 @@
       document.getElementById('impressumModal').classList.remove('visible');
     }
 
-    function getBerlinZoneLabel(date) {
-      try {
-        const zonePart = new Intl.DateTimeFormat('en-GB', {
-          timeZone: 'Europe/Berlin',
-          timeZoneName: 'shortOffset',
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-          .formatToParts(date)
-          .find((part) => part.type === 'timeZoneName');
-
-        const offset = zonePart ? zonePart.value : '';
-        if (offset.includes('+2')) return 'MESZ';
-        if (offset.includes('+1')) return 'MEZ';
-      } catch (e) {
-        return 'MEZ/MESZ';
-      }
-
-      return 'MEZ/MESZ';
-    }
-
-    function formatBerlinTimestamp(date) {
-      const formatted = new Intl.DateTimeFormat('de-DE', {
-        timeZone: 'Europe/Berlin',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      }).format(date);
-
-      return formatted + ' ' + getBerlinZoneLabel(date);
-    }
-
-    function updatePageNote() {
-      const parsedLastModified = document.lastModified ? new Date(document.lastModified) : null;
-      const fallbackDate = new Date(PAGE_CHANGED_AT_FALLBACK);
-      const sourceDate = parsedLastModified && !Number.isNaN(parsedLastModified.getTime()) ? parsedLastModified : fallbackDate;
-      document.getElementById('pageNote').innerHTML = '<a onclick="openImpressum()" style="cursor: pointer;">Impressum</a> | Letzte Aenderung: ' + formatBerlinTimestamp(sourceDate) + ' (' + PAGE_VERSION + ')';
-    }
-
     document.getElementById('impressumModal').addEventListener('click', (e) => {
       if (e.target.id === 'impressumModal') {
         closeImpressum();
       }
     });
-
-    updatePageNote();
   </script>
 </body>
 </html>
