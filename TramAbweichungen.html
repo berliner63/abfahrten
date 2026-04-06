@@ -24,15 +24,22 @@
       max-width: 1080px;
       margin: 18px auto;
     }
+    .header-line {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
     h1 {
-      margin: 0 0 8px 0;
-      font-size: 34px;
+      margin: 0;
+      font-size: 28px;
       line-height: 1.1;
     }
     .sub {
       color: #aaa;
       font-size: 14px;
-      margin-bottom: 14px;
+      margin: 0;
     }
     .panel {
       border: 1px solid #333;
@@ -119,7 +126,7 @@
       margin-top: 10px;
     }
     @media (max-width: 1024px), (pointer: coarse) {
-      h1 { font-size: 28px; }
+      h1 { font-size: 24px; }
       .table-title { font-size: 20px; }
       th, td { font-size: 14px; }
       th:nth-child(2), td:nth-child(2),
@@ -129,8 +136,10 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Tram-Abweichungen</h1>
-    <div class="sub">Berlinweite Live-Übersicht der Tram-Fahrten mit den 5 größten Verspätungen und den 5 größten Verfrühungen.</div>
+    <div class="header-line">
+      <h1>Tram-Abweichungen</h1>
+      <div class="sub">Berlinweite Live-Übersicht der Tram-Fahrten mit den 5 größten Verspätungen und den 5 größten Verfrühungen.</div>
+    </div>
 
     <div class="panel">
       <div class="controls">
@@ -278,25 +287,29 @@
         });
       });
 
-      const lateRows = rows
+      const allLateRows = rows
         .filter((row) => row.delayMinutes > 0)
         .sort((a, b) => {
           const diff = b.delayMinutes - a.delayMinutes;
           if (diff !== 0) return diff;
           return new Date(a.planned).getTime() - new Date(b.planned).getTime();
-        })
-        .slice(0, MAX_PER_GROUP);
+        });
 
-      const earlyRows = rows
+      const allEarlyRows = rows
         .filter((row) => row.delayMinutes < 0)
         .sort((a, b) => {
           const diff = a.delayMinutes - b.delayMinutes;
           if (diff !== 0) return diff;
           return new Date(a.planned).getTime() - new Date(b.planned).getTime();
-        })
-        .slice(0, MAX_PER_GROUP);
+        });
 
-      return [...lateRows, ...earlyRows];
+      return {
+        lateRows: allLateRows.slice(0, MAX_PER_GROUP),
+        earlyRows: allEarlyRows.slice(0, MAX_PER_GROUP),
+        lateCount: allLateRows.length,
+        earlyCount: allEarlyRows.length,
+        totalCount: allLateRows.length + allEarlyRows.length
+      };
     }
 
     async function fetchRadarMovements() {
@@ -355,11 +368,11 @@
       }).join('');
     }
 
-    function renderRows(rows) {
-      const lateRows = rows.filter((r) => r.delayMinutes > 0);
-      const earlyRows = rows.filter((r) => r.delayMinutes < 0);
+    function renderRows(data) {
+      const lateRows = data.lateRows;
+      const earlyRows = data.earlyRows;
 
-      document.getElementById('countsText').textContent = 'Trams: ' + rows.length + ' | verspätet: ' + lateRows.length + ' | verfrüht: ' + earlyRows.length;
+      document.getElementById('countsText').textContent = 'Trams: ' + data.totalCount + ' | verspätet: ' + data.lateCount + ' | verfrüht: ' + data.earlyCount;
 
       renderTableRows(earlyRows, 'earlyRows', 'Keine aktuellen verfrühten Trams gefunden.');
       renderTableRows(lateRows, 'lateRows', 'Keine aktuellen verspäteten Trams gefunden.');
