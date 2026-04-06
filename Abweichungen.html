@@ -66,40 +66,27 @@
       background: #1b1b1b;
       border-color: #555;
     }
-    .nav-icon {
+    .nav-accent {
       flex: 0 0 auto;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-      border: 1px solid #333;
-      background: #000;
-      padding: 4px;
-      box-sizing: border-box;
-    }
-    .nav-icon img {
-      display: block;
-      max-width: 100%;
-      max-height: 100%;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+      width: 10px;
+      align-self: stretch;
+      background: #555;
     }
     .nav-label {
       flex: 1 1 auto;
     }
-    .nav-button.sbahn .nav-icon,
-    .nav-button.ubahn .nav-icon {
-      padding: 5px;
+    .nav-button.tram .nav-accent {
+      background: #f9a825;
     }
-    .note {
-      margin: 14px 0 0 0;
-      color: #9a9a9a;
-      font-size: 13px;
+    .nav-button.bus .nav-accent {
+      background: #7b1fa2;
     }
-    .note a { color: #a0a0a0; cursor: pointer; text-decoration: underline; }
-    .note a:hover { color: #ccc; }
+    .nav-button.sbahn .nav-accent {
+      background: #008d4f;
+    }
+    .nav-button.ubahn .nav-accent {
+      background: #005ca9;
+    }
     .modal-overlay {
       display: none;
       position: fixed;
@@ -183,9 +170,8 @@
         font-size: 20px;
         padding: 16px 14px;
       }
-      .nav-icon {
-        width: 36px;
-        height: 36px;
+      .nav-accent {
+        width: 8px;
       }
     }
   </style>
@@ -196,12 +182,11 @@
     <p class="sub">Wähle eine Übersicht für Tram, Bus, S-Bahn oder U-Bahn.</p>
 
     <div class="buttons">
-      <a class="nav-button tram" href="./TramAbweichungen.html"><span class="nav-icon" aria-hidden="true"><img src="./logos/tram.svg" alt=""></span><span class="nav-label">Tram-Abweichungen</span></a>
-      <a class="nav-button bus" href="./BusAbweichungen.html"><span class="nav-icon" aria-hidden="true"><img src="./logos/bus.svg" alt=""></span><span class="nav-label">Bus-Abweichungen</span></a>
-      <a class="nav-button sbahn" href="./SBahnAbweichungen.html"><span class="nav-icon" aria-hidden="true"><img src="./logos/sbahn.svg" alt=""></span><span class="nav-label">S-Bahn-Abweichungen</span></a>
-      <a class="nav-button ubahn" href="./UBahnAbweichungen.html"><span class="nav-icon" aria-hidden="true"><img src="./logos/ubahn.svg" alt=""></span><span class="nav-label">U-Bahn-Abweichungen</span></a>
+      <a class="nav-button tram" href="./TramAbweichungen.html"><span class="nav-accent" aria-hidden="true"></span><span class="nav-label">Tram-Abweichungen</span></a>
+      <a class="nav-button bus" href="./BusAbweichungen.html"><span class="nav-accent" aria-hidden="true"></span><span class="nav-label">Bus-Abweichungen</span></a>
+      <a class="nav-button sbahn" href="./SBahnAbweichungen.html"><span class="nav-accent" aria-hidden="true"></span><span class="nav-label">S-Bahn-Abweichungen</span></a>
+      <a class="nav-button ubahn" href="./UBahnAbweichungen.html"><span class="nav-accent" aria-hidden="true"></span><span class="nav-label">U-Bahn-Abweichungen</span></a>
     </div>
-    <div class="note">Quelle: Seitenuebersicht | <a onclick="openImpressum()">Impressum</a></div>
 
     <div class="modal-overlay" id="impressumModal">
       <div class="modal-content">
