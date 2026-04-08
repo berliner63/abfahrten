@@ -786,6 +786,12 @@
       });
     }
 
+    function wait(ms) {
+      return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+      });
+    }
+
     async function ensureLeaflet() {
       if (window.L) return true;
       try {
@@ -805,15 +811,19 @@
       if (appStarted) return;
       appStarted = true;
 
-      const leafletReady = await ensureLeaflet();
+      loadAll();
+      autoTimer = setInterval(loadAll, AUTO_REFRESH_MS);
+
+      const leafletReady = await Promise.race([
+        ensureLeaflet(),
+        wait(6000).then(() => false)
+      ]);
+
       if (leafletReady) {
         initMap();
       } else {
         setMapFallbackMessage('Karte konnte nicht geladen werden. Die Fahrzeugliste wird trotzdem angezeigt.');
       }
-
-      loadAll();
-      autoTimer = setInterval(loadAll, AUTO_REFRESH_MS);
     }
 
     document.getElementById('refreshBtn').addEventListener('click', loadAll);
