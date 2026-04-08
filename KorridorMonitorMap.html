@@ -98,6 +98,18 @@
       min-height: 540px;
       background: #111;
     }
+    .map-fallback {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #bbb;
+      font-size: 16px;
+      text-align: center;
+      min-height: 540px;
+      height: 74vh;
+      box-sizing: border-box;
+    }
     .list-header {
       padding: 10px 12px;
       border-bottom: 1px solid #333;
@@ -370,7 +382,6 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
   <script>
     const API_BASES = [
       'https://v6.bvg.transport.rest',
@@ -397,6 +408,13 @@
     let corridorLine = null;
     let markerLayer = null;
     let stopLayer = null;
+    let appStarted = false;
+    function setMapFallbackMessage(text) {
+      const mapEl = document.getElementById('map');
+      if (!mapEl) return;
+      mapEl.innerHTML = '<div class="map-fallback">' + text + '</div>';
+    }
+
 
     function openImpressum() {
       document.getElementById('impressumModal').classList.add('visible');
@@ -540,6 +558,11 @@
     }
 
     function initMap() {
+      if (!window.L) {
+        setMapFallbackMessage('Karte konnte nicht geladen werden. Die Fahrzeugliste wird trotzdem angezeigt.');
+        return;
+      }
+
       map = L.map('map', { zoomControl: true });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
@@ -705,6 +728,7 @@
     }
 
     function renderMap(rows) {
+      if (!markerLayer) return;
       markerLayer.clearLayers();
       rows.forEach((row) => {
         const delay = getDelayLabel(row.delayMinutes);
@@ -751,6 +775,47 @@
       }
     }
 
+    function loadLeafletScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.crossOrigin = 'anonymous';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    async function ensureLeaflet() {
+      if (window.L) return true;
+      try {
+        await loadLeafletScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
+        return Boolean(window.L);
+      } catch (e) {
+        try {
+          await loadLeafletScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');
+          return Boolean(window.L);
+        } catch (secondError) {
+          return false;
+        }
+      }
+    }
+
+    async function startApp() {
+      if (appStarted) return;
+      appStarted = true;
+
+      const leafletReady = await ensureLeaflet();
+      if (leafletReady) {
+        initMap();
+      } else {
+        setMapFallbackMessage('Karte konnte nicht geladen werden. Die Fahrzeugliste wird trotzdem angezeigt.');
+      }
+
+      loadAll();
+      autoTimer = setInterval(loadAll, AUTO_REFRESH_MS);
+    }
+
     document.getElementById('refreshBtn').addEventListener('click', loadAll);
     document.getElementById('toggleAutoBtn').addEventListener('click', toggleAuto);
     document.getElementById('impressumModal').addEventListener('click', (e) => {
@@ -759,9 +824,7 @@
       }
     });
 
-    initMap();
-    loadAll();
-    autoTimer = setInterval(loadAll, AUTO_REFRESH_MS);
+    startApp();
   </script>
 </body>
 </html>
