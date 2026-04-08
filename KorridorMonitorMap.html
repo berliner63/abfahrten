@@ -318,7 +318,7 @@
   <div class="wrap">
     <div class="header-line">
       <h1>KorridorMonitorMap</h1>
-      <div class="sub">Live-Karte für Tram und Bus im Korridor Riesaer Straße bis Landsberger Allee/Rhinstraße.</div>
+      <div class="sub">Live-Karte für die Linien 18, M6, M8, 195 und X54 im Korridor Riesaer Straße bis Landsberger Allee/Rhinstraße.</div>
     </div>
 
     <div class="panel">
@@ -344,7 +344,7 @@
 
       <div class="list-panel">
         <div class="list-header">Fahrzeuge im Korridor</div>
-        <div class="list-note">Gefiltert nach Streckennähe zur Korridorlinie, nicht nur nach einem Stadt-Rechteck.</div>
+        <div class="list-note">Gefiltert auf die Linien 18, M6, M8, 195 und X54 sowie nach Streckennähe zur Korridorlinie.</div>
         <ul class="vehicle-list" id="vehicleList">
           <li class="empty">Lade Daten ...</li>
         </ul>
@@ -391,6 +391,7 @@
     const AUTO_REFRESH_MS = 60000;
     const CORRIDOR_DISTANCE_METERS = 320;
     const STOP_DISTANCE_METERS = 420;
+    const ALLOWED_LINES = new Set(['18', 'M6', 'M8', '195', 'X54']);
     const CORRIDOR_POINTS = [
       { name: 'Riesaer Str.', lat: 52.529401, lon: 13.624186 },
       { name: 'U Louis-Lewin-Str.', lat: 52.539136, lon: 13.619709 },
@@ -536,6 +537,11 @@
       return line.product === 'tram' || line.product === 'bus' || productName === 'tram' || productName === 'bus';
     }
 
+    function isAllowedLine(movement) {
+      const lineName = movement && movement.line && movement.line.name ? String(movement.line.name).trim().toUpperCase() : '';
+      return ALLOWED_LINES.has(lineName);
+    }
+
     function getBoundingBox(points, marginLat, marginLon) {
       let north = -Infinity;
       let south = Infinity;
@@ -633,7 +639,7 @@
       const result = [];
 
       movements.forEach((movement) => {
-        if (!isBusOrTram(movement) || !movement.location) return;
+        if (!isBusOrTram(movement) || !isAllowedLine(movement) || !movement.location) return;
 
         const locationMetrics = corridorMetrics({
           lat: movement.location.latitude,
@@ -699,7 +705,7 @@
     function renderList(rows) {
       const list = document.getElementById('vehicleList');
       if (!rows.length) {
-        list.innerHTML = '<li class="empty">Keine Tram- oder Busfahrzeuge im Korridor gefunden.</li>';
+        list.innerHTML = '<li class="empty">Keine Fahrzeuge der Linien 18, M6, M8, 195 oder X54 im Korridor gefunden.</li>';
         return;
       }
 
