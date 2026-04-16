@@ -81,8 +81,8 @@
   </div>
   <div class="meta">Quelle: <a href="https://v6.bvg.transport.rest" style="color:#64b5f6" target="_blank">transport.rest</a></div>
   <script>
-    const FROM_STOP = '900175023'; // Stendaler/Quedlinburger Str.
-    const TO_STOP = '900170013';   // Betriebshof Marzahn
+    const FROM_STOP = '900175011'; // Stendaler Str./Quedlinburger Str.
+    const TO_STOP = '900170010';   // Betriebshof Marzahn
     const API_BASE = 'https://v6.bvg.transport.rest';
     const MAX_RESULTS = 3;
 
@@ -93,7 +93,7 @@
     }
 
     async function fetchDepartures() {
-      const url = `${API_BASE}/stops/${FROM_STOP}/departures?duration=60&results=12&language=de`;
+      const url = `${API_BASE}/stops/${FROM_STOP}/departures?duration=60&results=20&stopovers=true&language=de`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('API-Fehler: ' + res.status);
       const data = await res.json();
@@ -101,9 +101,8 @@
     }
 
     function hasDestination(departure) {
-      if (!departure || !departure.journey || !Array.isArray(departure.journey.passed)) return false;
-      // journey.passed: alle Halte, journey.destination: Zielname
-      return departure.journey.passed.some(stop => stop.stop && String(stop.stop.id) === TO_STOP);
+      if (!departure || !Array.isArray(departure.stopovers)) return false;
+      return departure.stopovers.some(s => s.stop && String(s.stop.id) === TO_STOP);
     }
 
     function renderDepartures(deps) {
