@@ -106,7 +106,9 @@
       if (!res.ok) return false;
       const data = await res.json();
       const stopovers = data.trip && Array.isArray(data.trip.stopovers) ? data.trip.stopovers : [];
-      return stopovers.some(s => s.stop && String(s.stop.id) === TO_STOP);
+      const fromIndex = stopovers.findIndex(s => s.stop && String(s.stop.id) === FROM_STOP);
+      const future = fromIndex >= 0 ? stopovers.slice(fromIndex + 1) : stopovers;
+      return future.some(s => s.stop && String(s.stop.id) === TO_STOP);
     }
 
     function renderDepartures(deps) {
