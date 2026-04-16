@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Abfahrten Stendaler/Quedlinburger Str. → Betriebshof Marzahn</title>
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      color: #fff;
+      font-family: 'Roboto Condensed', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 22px;
+      margin: 24px 0 10px 0;
+      font-weight: 700;
+      text-align: center;
+    }
+    .departures {
+      width: 100%;
+      max-width: 340px;
+      background: #111;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px #0008;
+      padding: 18px 12px 12px 12px;
+      margin: 0 auto 24px auto;
+    }
+    .dep-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #222;
+      font-size: 18px;
+    }
+    .dep-row:last-child { border-bottom: none; }
+    .line {
+      font-weight: 700;
+      font-size: 18px;
+      margin-right: 10px;
+    }
+    .direction {
+      color: #bbb;
+      font-size: 15px;
+      margin-left: 8px;
+      flex: 1;
+      text-align: left;
+    }
+    .time {
+      font-size: 18px;
+      font-weight: 700;
+      min-width: 48px;
+      text-align: right;
+    }
+    .meta {
+      color: #888;
+      font-size: 13px;
+      margin: 10px 0 0 0;
+      text-align: center;
+    }
+    .err {
+      color: #ef9a9a;
+      font-size: 16px;
+      margin: 18px 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Abfahrten Stendaler/Quedlinburger Str. → Betriebshof Marzahn</h1>
+  <div class="departures" id="departures">
+    <div class="meta">Lade Abfahrten ...</div>
+  </div>
+  <div class="meta">Quelle: <a href="https://v6.bvg.transport.rest" style="color:#64b5f6" target="_blank">transport.rest</a></div>
+  <script>
+    const FROM_STOP = '900175023'; // Stendaler/Quedlinburger Str.
+    const TO_STOP = '900170013';   // Betriebshof Marzahn
+    const API_BASE = 'https://v6.bvg.transport.rest';
+    const MAX_RESULTS = 3;
+
+    function formatTime(iso) {
+      if (!iso) return '-';
+      const d = new Date(iso);
+      return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function fetchDepartures() {
+      const url = `${API_BASE}/stops/${FROM_STOP}/departures?duration=60&results=12&language=de`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('API-Fehler: ' + res.status);
+      const data = await res.json();
+      return Array.isArray(data.departures) ? data.departures : [];
+    }
+
+    function hasDestination(departure) {
+      if (!departure || !departure.journey || !Array.isArray(departure.journey.passed)) return false;
+      // journey.passed: alle Halte, journey.destination: Zielname
+      return departure.journey.passed.some(stop => stop.stop && String(stop.stop.id) === TO_STOP);
+    }
+
+    function renderDepartures(deps) {
+      const el = document.getElementById('departures');
+      if (!deps.length) {
+        el.innerHTML = '<div class="meta">Keine passenden Abfahrten gefunden.</div>';
+        return;
+      }
+      el.innerHTML = deps.map(dep => `
+        <div class="dep-row">
+          <span class="line">${dep.line && dep.line.name ? dep.line.name : '-'}</span>
+          <span class="direction">${dep.direction || '-'}</span>
+          <span class="time">${formatTime(dep.when)}</span>
+        </div>
+      `).join('');
+    }
+
+    async function load() {
+      const el = document.getElementById('departures');
+      el.innerHTML = '<div class="meta">Lade Abfahrten ...</div>';
+      try {
+        const deps = await fetchDepartures();
+        const filtered = deps.filter(hasDestination).slice(0, MAX_RESULTS);
+        renderDepartures(filtered);
+      } catch (e) {
+        el.innerHTML = `<div class="err">${e.message}</div>`;
+      }
+    }
+
+    load();
+    setInterval(load, 60000);
+  </script>
+</body>
+</html>
