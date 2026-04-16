@@ -74,7 +74,7 @@
   <script>
     const FROM_STOP = '900175011'; // Stendaler Str./Quedlinburger Str.
     const TO_STOP = '900170010';   // Betriebshof Marzahn
-    const API_BASE = 'https://v6.bvg.transport.rest';
+    const API_BASES = ['https://v6.bvg.transport.rest', 'https://v6.vbb.transport.rest'];
     const MAX_RESULTS = 3;
 
     function formatTime(iso) {
@@ -83,23 +83,45 @@
       return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
     }
 
+    async function fetchWithRetry(url, retries = 2) {
+      for (let i = 0; i <= retries; i++) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return res;
+        } catch (e) {
+          if (i === retries) throw e;
+        }
+      }
+    }
+
     async function fetchDepartures() {
-      const url = `${API_BASE}/stops/${FROM_STOP}/departures?duration=90&results=20&language=de`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('API-Fehler: ' + res.status);
-      const data = await res.json();
-      return Array.isArray(data.departures) ? data.departures : [];
+      let lastErr;
+      for (const base of API_BASES) {
+        try {
+          const url = `${base}/stops/${FROM_STOP}/departures?duration=90&results=20&language=de`;
+          const res = await fetchWithRetry(url);
+          if (!res) continue;
+          const data = await res.json();
+          return Array.isArray(data.departures) ? data.departures : [];
+        } catch (e) { lastErr = e; }
+      }
+      throw lastErr || new Error('API nicht erreichbar');
     }
 
     async function tripHasStop(tripId) {
-      const url = `${API_BASE}/trips/${encodeURIComponent(tripId)}?stopovers=true&language=de`;
-      const res = await fetch(url);
-      if (!res.ok) return false;
-      const data = await res.json();
-      const stopovers = data.trip && Array.isArray(data.trip.stopovers) ? data.trip.stopovers : [];
-      const fromIndex = stopovers.findIndex(s => s.stop && String(s.stop.id) === FROM_STOP);
-      const future = fromIndex >= 0 ? stopovers.slice(fromIndex + 1) : stopovers;
-      return future.some(s => s.stop && String(s.stop.id) === TO_STOP);
+      for (const base of API_BASES) {
+        try {
+          const url = `${base}/trips/${encodeURIComponent(tripId)}?stopovers=true&language=de`;
+          const res = await fetchWithRetry(url);
+          if (!res) continue;
+          const data = await res.json();
+          const stopovers = data.trip && Array.isArray(data.trip.stopovers) ? data.trip.stopovers : [];
+          const fromIndex = stopovers.findIndex(s => s.stop && String(s.stop.id) === FROM_STOP);
+          const future = fromIndex >= 0 ? stopovers.slice(fromIndex + 1) : stopovers;
+          return future.some(s => s.stop && String(s.stop.id) === TO_STOP);
+        } catch (e) { /* nächste Base versuchen */ }
+      }
+      return false;
     }
 
     function renderDepartures(deps) {
