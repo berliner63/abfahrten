@@ -93,16 +93,20 @@
     }
 
     async function fetchDepartures() {
-      const url = `${API_BASE}/stops/${FROM_STOP}/departures?duration=60&results=20&stopovers=true&language=de`;
+      const url = `${API_BASE}/stops/${FROM_STOP}/departures?duration=90&results=20&language=de`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('API-Fehler: ' + res.status);
       const data = await res.json();
       return Array.isArray(data.departures) ? data.departures : [];
     }
 
-    function hasDestination(departure) {
-      if (!departure || !Array.isArray(departure.stopovers)) return false;
-      return departure.stopovers.some(s => s.stop && String(s.stop.id) === TO_STOP);
+    async function tripHasStop(tripId) {
+      const url = `${API_BASE}/trips/${encodeURIComponent(tripId)}?stopovers=true&language=de`;
+      const res = await fetch(url);
+      if (!res.ok) return false;
+      const data = await res.json();
+      const stopovers = data.trip && Array.isArray(data.trip.stopovers) ? data.trip.stopovers : [];
+      return stopovers.some(s => s.stop && String(s.stop.id) === TO_STOP);
     }
 
     function renderDepartures(deps) {
@@ -125,8 +129,13 @@
       el.innerHTML = '<div class="meta">Lade Abfahrten ...</div>';
       try {
         const deps = await fetchDepartures();
-        const filtered = deps.filter(hasDestination).slice(0, MAX_RESULTS);
-        renderDepartures(filtered);
+        const results = [];
+        for (const dep of deps) {
+          if (results.length >= MAX_RESULTS) break;
+          const passes = await tripHasStop(dep.tripId);
+          if (passes) results.push(dep);
+        }
+        renderDepartures(results);
       } catch (e) {
         el.innerHTML = `<div class="err">${e.message}</div>`;
       }
