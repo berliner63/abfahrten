@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Marquee from "react-fast-marquee";
-import { getTranslation } from "../dictionary";
 
 const DonationDisplay = (props) => {
   const [donationsList, setDonationsList] = useState([]);

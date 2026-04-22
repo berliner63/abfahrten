@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/exhaustive-deps, no-unused-vars */
 import React, { useEffect, useState } from "react";
 import Settings from "./Components/Settings";
 import Icon, {
@@ -10,12 +10,11 @@ import Icon, {
   PlusOutlined,
   MinusOutlined,
   InfoCircleOutlined,
-  EuroOutlined,
   GithubOutlined,
   MenuOutlined,
 } from "@ant-design/icons";
 import useIsMobile from "./hooks/useIsMobile";
-import bvgIcon from "./images/BVG.png";
+import logoIcon from "./images/logo.png";
 import payPalQrCode from "./images/PayPalQrCode.png";
 import DepartureDisplay from "./Components/DepartureDisplay";
 import {
@@ -33,8 +32,10 @@ import DonationDisplay from "./Components/DonationDisplay";
 import CookieBanner from "./Components/CookieBanner";
 import LegalModals from "./Components/LegalModals";
 import { getTranslation } from "./dictionary";
+import { sanitizeStationData } from "./utils/displayText";
 
 const App = () => {
+    // ...existing code...
   const [language, setLanguage] = useState("de");
   const [messageApi, contextHolder] = message.useMessage();
   const [selectedStations, setSelectedStations] = useState([]);
@@ -272,7 +273,7 @@ const App = () => {
       }
     });
 
-    setExportUrl(`${window.location.origin}?${urlParams.toString()}`);
+    setExportUrl(`${window.location.origin}${window.location.pathname}?${urlParams.toString()}`);
   };
 
   const urlHasParams = () => {
@@ -325,7 +326,7 @@ const App = () => {
     });
 
     instanceIdCounter.current = fromUrlRetrievedStations.length;
-    setSelectedStations(fromUrlRetrievedStations);
+    setSelectedStations(fromUrlRetrievedStations.map(sanitizeStationData));
   };
 
   const checkIfApiIsAvailable = () => {
@@ -472,7 +473,7 @@ const App = () => {
           station = { ...station, instanceId: index + 1 };
         }
         maxId = Math.max(maxId, station.instanceId);
-        return station;
+        return sanitizeStationData(station);
       });
       instanceIdCounter.current = maxId;
       setSelectedStations(migratedStations);
@@ -480,12 +481,14 @@ const App = () => {
   };
 
   const onStationSelect = (dataSet) => {
-    const selectedStationsCopy = [...selectedStations];
+    // Immer nur eine Station erlauben
     instanceIdCounter.current += 1;
-    selectedStationsCopy.push({ ...dataSet, instanceId: instanceIdCounter.current });
-    setSelectedStations(selectedStationsCopy);
-
-    saveDataInCookie("bvgDepatureSelectedStations", selectedStationsCopy);
+    const newStation = sanitizeStationData({
+      ...dataSet,
+      instanceId: instanceIdCounter.current,
+    });
+    setSelectedStations([newStation]);
+    saveDataInCookie("bvgDepatureSelectedStations", [newStation]);
   };
 
   const onStationEdit = (dataSet) => {
@@ -493,7 +496,7 @@ const App = () => {
     const index = selectedStationsCopy.findIndex(
       (selectedStation) => selectedStation.instanceId === dataSet.instanceId
     );
-    selectedStationsCopy[index] = dataSet;
+    selectedStationsCopy[index] = sanitizeStationData(dataSet);
     setSelectedStations(selectedStationsCopy);
 
     saveDataInCookie("bvgDepatureSelectedStations", selectedStationsCopy);
@@ -613,7 +616,7 @@ const App = () => {
         <Title level={5}>Bereitstellung der Daten</Title>
         <Space direction="vertical" size={1}>
           <Text>
-            <a href="https://www.transport.rest">
+            <a href="https://transport.rest">
               transport.rest transit APIs
             </a>
           </Text>
@@ -632,13 +635,13 @@ const App = () => {
         </Space>
         <Title level={5}>Angaben gemäß § 5 TMG</Title>
         <Space direction="vertical" size={1}>
-          <Text>Nikolas Tsombanis</Text>
+          <Text>Andreas Kuhl</Text>
         </Space>
         <Title level={5}>Kontakt</Title>
         <Space direction="vertical" size={1}>
           <Text>
-            <a href="mailto:weilsiedichlieben@posteo.de">
-              weilsiedichlieben@posteo.de
+            <a href="mailto:andreas.kuhl@magenta.de">
+              andreas.kuhl@magenta.de
             </a>
           </Text>
         </Space>
@@ -646,7 +649,7 @@ const App = () => {
           Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV
         </Title>
         <Space direction="vertical" size={1}>
-          <Text>Nikolas Tsombanis</Text>
+          <Text>Andreas Kuhl</Text>
         </Space>
       </div>
     </Modal>
@@ -740,7 +743,7 @@ const App = () => {
 
           {/* GitHub */}
           <a
-            href="https://github.com/NikBLN/weilSieDichLieben"
+            href="https://github.com/berliner63/abfahrten"
             target="_blank"
             rel="noreferrer"
             style={{ display: "flex", alignItems: "center", color: "#f0d722", textDecoration: "none" }}
@@ -784,7 +787,6 @@ const App = () => {
       return (
         <div style={{ display: "flex", alignItems: "center", flex: "0 0 auto" }}>
           {renderInfoModal()}
-          {renderDonationModal()}
           {renderFontSizeModal()}
           {renderHamburgerMenu()}
           {!apiIsAvailable && (
@@ -809,7 +811,6 @@ const App = () => {
         }}
       >
         {renderInfoModal()}
-        {renderDonationModal()}
         <InfoCircleOutlined
           onClick={() => {
             setInfoModalVisible(true);
@@ -818,15 +819,6 @@ const App = () => {
             fontSize: "32px",
             color: "#f0d722",
             marginRight: "24px",
-          }}
-        />
-        <EuroOutlined
-          onClick={() => setDonationModalVisible(true)}
-          style={{
-            fontSize: "32px",
-            color: "#f0d722",
-            marginRight: "24px",
-            cursor: "pointer",
           }}
         />
         <Popover
@@ -839,12 +831,10 @@ const App = () => {
               size={1}
             >
               <Text>
-                If you are a developer, feel free to check out the repo of this
-                project on GitHub. I'm always happy if you have a great feature
-                idea and contribute to this open source project!
+                Dies ist eine angepasste Version des Originals von NikBLN. Das Repository findest du hier:
               </Text>
               <a
-                href="https://github.com/NikBLN/weilSieDichLieben"
+                href="https://github.com/berliner63/abfahrten"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -883,7 +873,7 @@ const App = () => {
         }}
       >
         <img
-          src={bvgIcon}
+          src={logoIcon}
           style={{ height: isMobile ? "36px" : "48px" }}
           alt="Icon"
           className={isPulsing ? "pulse-animation" : ""}
@@ -893,14 +883,10 @@ const App = () => {
   };
 
   const renderHeaderRightSideContent = () => {
-    // Mobile: Only Donation + Settings
+    // Mobile: Nur Settings
     if (isMobile) {
       return (
         <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: "0 0 auto" }}>
-          <EuroOutlined
-            onClick={() => setDonationModalVisible(true)}
-            style={{ fontSize: "28px", color: "#f0d722", cursor: "pointer" }}
-          />
           {renderTopSettingsIcon()}
         </div>
       );
