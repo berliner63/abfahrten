@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>Abfahrten Stendaler/Quedlinburger Str. → Betriebshof Marzahn</title>
+  <style>
+    :root {
+      --bg: #000;
+      --card: #111;
+      --line: #222;
+      --text: #fff;
+      --muted: #a0a0a0;
+      --error: #ef9a9a;
+
+      --fs-row: 24px;
+      --fs-meta: 24px;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Roboto Condensed", Arial, sans-serif;
+      padding: 8px;
+    }
+
+    .departures {
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 12px #0008;
+      overflow: hidden;
+    }
+
+    .header,
+    .footer {
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: var(--fs-meta);
+      text-align: center;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .footer {
+      border-top: 1px solid var(--line);
+      border-bottom: 0;
+    }
+
+    .rows { padding: 0 12px; }
+
+    .dep-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      column-gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: var(--fs-row);
+      line-height: 1.1;
+    }
+
+    .dep-row:last-child { border-bottom: 0; }
+
+    .line {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .direction {
+      color: #c8c8c8;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .time {
+      font-weight: 700;
+      text-align: right;
+      white-space: nowrap;
+      min-width: 3.2em;
+    }
+
+    .meta,
+    .err {
+      padding: 14px 12px;
+      text-align: center;
+      font-size: var(--fs-meta);
+    }
+
+    .meta { color: var(--muted); }
+    .err { color: var(--error); }
+  </style>
+</head>
+<body>
+  <main class="departures" id="departures" aria-live="polite">
+    <div class="header">Stendaler/Quedlinburger Str. → Betriebshof Marzahn</div>
+    <div class="rows" id="rows">
+      <div class="meta">Lade Abfahrten …</div>
+    </div>
+    <div class="footer" id="footer">—</div>
+  </main>
+
+  <script>
+    const FROM_STOP = "900175011";
+    const TO_STOP = "900170010";
+    const API_BASES = ["https://v6.bvg.transport.rest", "https://v6.vbb.transport.rest"];
+    const MAX_RESULTS = 3;
+    const REFRESH_MS = 60000;
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatTime(iso) {
+      if (!iso) return "--:--";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "--:--";
+      return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function formatNow() {
+      const d = new Date();
+      return "Aktualisiert: " + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+
+    async function fetchWithRetry(url, retries = 2) {
+      let lastError;
+      for (let i = 0; i <= retries; i++) {
+        try {
+          const res = await fetch(url, { cache: "no-store" });
+          if (res.ok) return res;
+          lastError = new Error(`HTTP ${res.status}`);
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      throw lastError || new Error("Netzwerkfehler");
+    }
+
+    async function fetchDepartures() {
+      let lastErr;
+      for (const base of API_BASES) {
+        try {
+          const url = `${base}/stops/${FROM_STOP}/departures?duration=90&results=20&language=de`;
+          const res = await fetchWithRetry(url);
+          const data = await res.json();
+          return Array.isArray(data.departures) ? data.departures : [];
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error("API nicht erreichbar");
+    }
+
+    async function tripHasStop(tripId) {
+      if (!tripId) return false;
+      for (const base of API_BASES) {
+        try {
+          const url = `${base}/trips/${encodeURIComponent(tripId)}?stopovers=true&language=de`;
+          const res = await fetchWithRetry(url);
+          const data = await res.json();
+
+          const stopovers = data?.trip?.stopovers;
+          if (!Array.isArray(stopovers)) continue;
+
+          const fromIndex = stopovers.findIndex(s => String(s?.stop?.id || "") === FROM_STOP);
+          const future = fromIndex >= 0 ? stopovers.slice(fromIndex + 1) : stopovers;
+
+          return future.some(s => String(s?.stop?.id || "") === TO_STOP);
+        } catch (_) {}
+      }
+      return false;
+    }
+
+    function renderRows(deps) {
+      const rows = document.getElementById("rows");
+      if (!deps.length) {
+        rows.innerHTML = `<div class="meta">Keine passenden Abfahrten gefunden.</div>`;
+        return;
+      }
+
+      rows.innerHTML = deps.map(dep => {
+        const line = escapeHtml(dep?.line?.name || "-");
+        const direction = escapeHtml(dep?.direction || "-");
+        const time = escapeHtml(formatTime(dep?.when));
+        return `
+          <div class="dep-row">
+            <span class="line">${line}</span>
+            <span class="direction" title="${direction}">${direction}</span>
+            <span class="time">${time}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function setFooter(text) {
+      document.getElementById("footer").textContent = text;
+    }
+
+    async function load() {
+      const rows = document.getElementById("rows");
+      rows.innerHTML = `<div class="meta">Lade Abfahrten …</div>`;
+
+      try {
+        const deps = await fetchDepartures();
+        const filtered = [];
+
+        for (const dep of deps) {
+          if (filtered.length >= MAX_RESULTS) break;
+          if (await tripHasStop(dep?.tripId)) filtered.push(dep);
+        }
+
+        renderRows(filtered);
+        setFooter(formatNow());
+      } catch (e) {
+        rows.innerHTML = `<div class="err">${escapeHtml(e?.message || "Unbekannter Fehler")}</div>`;
+        setFooter("Aktualisierung fehlgeschlagen");
+      }
+    }
+
+    load();
+    setInterval(load, REFRESH_MS);
+  </script>
+</body>
+</html>
