@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="dark" />
-  <title>Abfahrten Stendaler/Quedlinburger Str. → Betriebshof Marzahn</title>
+  <title>Abfahrten Stendaler/Quedlinburger Str. â†’ Betriebshof Marzahn</title>
   <style>
     :root {
       --bg: #000;
@@ -83,12 +83,20 @@
 
     .meta { color: var(--muted); }
     .err { color: var(--error); }
+
+    .remarks {
+      grid-column: 1 / -1;
+      font-size: 0.75em;
+      color: #ffcc00;
+      padding-top: 4px;
+      white-space: normal;
+    }
   </style>
 </head>
 <body>
   <main class="departures" id="departures" aria-live="polite">
     <div class="rows" id="rows">
-      <div class="meta">Lade Abfahrten …</div>
+      <div class="meta">Lade Abfahrten &hellip;</div>
     </div>
   </main>
 
@@ -169,6 +177,8 @@
       return false;
     }
 
+    const LINES_WITH_REMARKS = ["M6", "18"];
+
     function renderRows(deps) {
       const rows = document.getElementById("rows");
       if (!deps.length) {
@@ -180,11 +190,24 @@
         const line = escapeHtml(dep?.line?.name || "-");
         const direction = escapeHtml(dep?.direction || "-");
         const time = escapeHtml(formatTime(dep?.when));
+
+        let remarksHtml = "";
+        if (LINES_WITH_REMARKS.includes(dep?.line?.name) && Array.isArray(dep.remarks)) {
+          const warnings = dep.remarks
+            .filter(r => r.type === "warning" || r.type === "status")
+            .map(r => escapeHtml(r.text || r.summary || ""))
+            .filter(Boolean);
+          if (warnings.length) {
+            remarksHtml = `<span class="remarks">&#x26A0;&#xFE0F; ${warnings.join(" &middot; ")}</span>`;
+          }
+        }
+
         return `
           <div class="dep-row">
             <span class="line">${line}</span>
             <span class="direction" title="${direction}">${direction}</span>
             <span class="time">${time}</span>
+            ${remarksHtml}
           </div>
         `;
       }).join("");
@@ -192,7 +215,7 @@
 
     async function load() {
       const rows = document.getElementById("rows");
-      rows.innerHTML = `<div class="meta">Lade Abfahrten …</div>`;
+      rows.innerHTML = `<div class="meta">Lade Abfahrten &hellip;</div>`;
 
       try {
         const deps = await fetchDepartures();
