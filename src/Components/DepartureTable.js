@@ -80,7 +80,6 @@ const DepartureTable = (props) => {
     },
   };
   const [isPaused, setIsPaused] = useState(false);
-  const [radarModalOpen, setRadarModalOpen] = useState(false);
 
   const sanitizeHTML = (html) => {
     const allowedTags = {
@@ -288,29 +287,6 @@ const DepartureTable = (props) => {
           </div>
         );
       })}
-
-      {/* Mobile Radar Modal */}
-      {isMobile && (
-        <Modal
-          open={radarModalOpen}
-          onCancel={() => setRadarModalOpen(false)}
-          footer={null}
-          width="100%"
-          centered
-          styles={{
-            body: { padding: 0 },
-            content: { padding: 0 }
-          }}
-          className="mobile-fullscreen-modal"
-        >
-          <RadarMap
-            stopLocation={selectedStopLocation}
-            dataSource={props.dataSource}
-            language={props.language}
-            isMobile={true}
-          />
-        </Modal>
-      )}
     </div>
   );
 };
