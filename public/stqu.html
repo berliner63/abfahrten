@@ -14,8 +14,8 @@
       --muted: #a0a0a0;
       --error: #ef9a9a;
 
-      --fs-row: clamp(18px, 4.8vw, 30px);
-      --fs-meta: clamp(14px, 3.2vw, 22px);
+      --fs-row: 24px;
+      --fs-meta: 24px;
       --radius: 10px;
     }
 
@@ -189,7 +189,6 @@
       const rows = document.getElementById("rows");
       if (!deps.length) {
         rows.innerHTML = `<div class="meta">Keine passenden Abfahrten gefunden.</div>`;
-        updateTypeScale();
         return;
       }
 
@@ -205,38 +204,10 @@
           </div>
         `;
       }).join("");
-
-      updateTypeScale();
     }
 
     function setFooter(text) {
       document.getElementById("footer").textContent = text;
-    }
-
-    function updateTypeScale() {
-      const board = document.getElementById("departures");
-      if (!board) return;
-
-      const width = board.clientWidth || document.documentElement.clientWidth || window.innerWidth || 800;
-      const rowSize = Math.max(16, Math.min(34, width * 0.043));
-      const metaSize = Math.max(12, Math.min(24, width * 0.03));
-
-      document.documentElement.style.setProperty("--fs-row", `${rowSize.toFixed(1)}px`);
-      document.documentElement.style.setProperty("--fs-meta", `${metaSize.toFixed(1)}px`);
-    }
-
-    function bindTypeScaleUpdates() {
-      updateTypeScale();
-      window.addEventListener("resize", updateTypeScale, { passive: true });
-      window.addEventListener("orientationchange", updateTypeScale, { passive: true });
-
-      if ("ResizeObserver" in window) {
-        const ro = new ResizeObserver(updateTypeScale);
-        ro.observe(document.documentElement);
-
-        const board = document.getElementById("departures");
-        if (board) ro.observe(board);
-      }
     }
 
     async function load() {
@@ -260,7 +231,6 @@
       }
     }
 
-    bindTypeScaleUpdates();
     load();
     setInterval(load, REFRESH_MS);
   </script>
