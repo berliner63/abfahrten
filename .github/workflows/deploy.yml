@@ -3,7 +3,7 @@ name: Deploy to Hetzner FTP on master push
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build-and-deploy:
