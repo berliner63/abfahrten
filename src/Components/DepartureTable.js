@@ -1,8 +1,7 @@
-import { Row, Col, Modal } from "antd";
+import { Row, Col } from "antd";
 import React, { useState } from "react";
 import Marquee from "react-fast-marquee";
 import { getTranslation } from "../dictionary";
-import RadarMap from "./RadarMap";
 import useIsMobile from "../hooks/useIsMobile";
 import { sanitizeDisplayText } from "../utils/displayText";
 

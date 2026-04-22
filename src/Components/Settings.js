@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined } from "@ant-design/icons";
 import SettingsModal from "./SettingsModal";
 import { Button, Card, Row, Col, Switch, InputNumber, Select } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
 import "animate.css";
 import StationFinder from "./StationFinder";
 import { getTranslation } from "../dictionary";
 import useIsMobile from "../hooks/useIsMobile";
+import { sanitizeDisplayText } from "../utils/displayText";
 
 const Settings = (props) => {
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
@@ -75,251 +75,245 @@ const Settings = (props) => {
         }}
       >
         <Row gutter={[16, 16]} wrap={true} style={{ margin: 0 }}>
-          {props.selectedStations.map((station) => {
-            return (
-              <Col key={station.instanceId} xs={24} sm={12} md={8} lg={6}>
-                <Card
-                  style={{ boxShadow: "3px 3px 10px 0px rgba(0,0,0,0.5)" }}
-                  size="small"
-                  title={
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {station.value}
-                      </div>
-                      <div
-                        onClick={() => {
-                          props.removeStation(station);
-                        }}
-                        style={{ cursor: "pointer", flexShrink: 0 }}
-                      >
-                        <DeleteOutlined
-                          style={{ color: "red", fontSize: "16px" }}
-                        />
-                      </div>
-                    </div>
-                  }
-                >
+          {props.selectedStations.length === 0 && (
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Card
+                style={{ boxShadow: "3px 3px 10px 0px rgba(0,0,0,0.5)" }}
+                size="small"
+                title={getTranslation(props.language, "addStation")}
+              >
+                <StationFinder
+                  allowClear={false}
+                  onSelect={props.onStationSelect}
+                  language={props.language}
+                />
+              </Card>
+            </Col>
+          )}
+          {props.selectedStations.map((station) => (
+            <Col key={station.instanceId} xs={24} sm={12} md={8} lg={6}>
+              <Card
+                style={{ boxShadow: "3px 3px 10px 0px rgba(0,0,0,0.5)" }}
+                size="small"
+                title={
                   <div
                     style={{
                       display: "flex",
-                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      alignItems: "center",
                     }}
                   >
-                    <div style={{ display: "flex", marginBottom: "8px" }}>
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          width: "60px",
-                        }}
-                      >
-                        {getTranslation(props.language, "sBahn")}
-                      </div>
-                      <Switch
-                        onChange={(checked) => {
-                          onPropChange(checked, station, "suburban");
-                        }}
-                        checked={station.suburban}
-                      />
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {sanitizeDisplayText(station.value)}
                     </div>
-                    <div style={{ display: "flex", marginBottom: "8px" }}>
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          width: "60px",
-                        }}
-                      >
-                        {getTranslation(props.language, "subway")}
-                      </div>
-                      <Switch
-                        onChange={(checked) => {
-                          onPropChange(checked, station, "subway");
-                        }}
-                        checked={station.subway}
-                      />
-                    </div>
-                    <div style={{ display: "flex", marginBottom: "8px" }}>
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          width: "60px",
-                        }}
-                      >
-                        {getTranslation(props.language, "tram")}
-                      </div>
-                      <Switch
-                        onChange={(checked) => {
-                          onPropChange(checked, station, "tram");
-                        }}
-                        checked={station.tram}
-                      />
-                    </div>
-                    <div style={{ display: "flex", marginBottom: "8px" }}>
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          width: "60px",
-                        }}
-                      >
-                        {getTranslation(props.language, "bus")}
-                      </div>
-                      <Switch
-                        onChange={(checked) => {
-                          onPropChange(checked, station, "bus");
-                        }}
-                        checked={station.bus}
-                      />
-                    </div>
-                    <div style={{ display: "flex", marginBottom: "8px" }}>
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          width: "60px",
-                        }}
-                      >
-                        {getTranslation(props.language, "ferry")}
-                      </div>
-                      <Switch
-                        onChange={(checked) => {
-                          onPropChange(checked, station, "ferry");
-                        }}
-                        checked={station.ferry}
-                      />
-                    </div>
-                    <div style={{ display: "flex", marginBottom: "8px" }}>
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          width: "60px",
-                        }}
-                      >
-                        {getTranslation(props.language, "icIce")}
-                      </div>
-                      <Switch
-                        onChange={(checked) => {
-                          onPropChange(checked, station, "express");
-                        }}
-                        checked={station.express}
-                      />
-                    </div>
-                    <div style={{ display: "flex", marginBottom: "8px" }}>
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          width: "60px",
-                        }}
-                      >
-                        {getTranslation(props.language, "rbRe")}
-                      </div>
-                      <Switch
-                        onChange={(checked) => {
-                          onPropChange(checked, station, "regional");
-                        }}
-                        checked={station.regional}
-                      />
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          width: "150px",
-                        }}
-                      >
-                        {getTranslation(
-                          props.language,
-                          "showDeparturesInDirection"
-                        )}
-                      </div>
-                      <StationFinder
-                        allowClear={true}
-                        initialValue={station.destination?.name}
-                        onSelect={(value) => {
-                          onPropChange(
-                            value != null
-                              ? {
-                                  id: value.id,
-                                  name: value.value,
-                                }
-                              : null,
-                            station,
-                            "destination"
-                          );
-                        }}
-                        selectedStations={props.selectedStations}
-                        language={props.language}
-                      />
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          width: "150px",
-                        }}
-                      >
-                        {getTranslation(
-                          props.language,
-                          "showDeparturesInMinutes"
-                        )}
-                      </div>
-                      <InputNumber
-                        value={station.when}
-                        onChange={(value) => {
-                          onPropChange(value, station, "when");
-                        }}
-                      />
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      <div
-                        style={{
-                          marginRight: "8px",
-                          width: "150px",
-                        }}
-                      >
-                        {getTranslation(props.language, "amountOfResults")}
-                      </div>
-                      <InputNumber
-                        value={station.results}
-                        onChange={(value) => {
-                          onPropChange(value, station, "results");
-                        }}
+                    <div
+                      onClick={() => {
+                        props.removeStation(station);
+                      }}
+                      style={{ cursor: "pointer", flexShrink: 0 }}
+                    >
+                      <DeleteOutlined
+                        style={{ color: "red", fontSize: "16px" }}
                       />
                     </div>
                   </div>
-                </Card>
-              </Col>
-            );
-          })}
-          <Col
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-            }}
-          >
-            <Button
-              onClick={() => {
-                setSettingsModalVisible(true);
-              }}
-              style={{
-                backgroundColor: "#f0d722",
-                boxShadow: "0px 0px 5px 0px rgba(0,0,0,0.5)",
-              }}
-              icon={<PlusOutlined />}
-            >
-              {getTranslation(props.language, "addStation")}
-            </Button>
-          </Col>
+                }
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <div style={{ display: "flex", marginBottom: "8px" }}>
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        width: "60px",
+                      }}
+                    >
+                      {getTranslation(props.language, "sBahn")}
+                    </div>
+                    <Switch
+                      onChange={(checked) => {
+                        onPropChange(checked, station, "suburban");
+                      }}
+                      checked={station.suburban}
+                    />
+                  </div>
+                  <div style={{ display: "flex", marginBottom: "8px" }}>
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        width: "60px",
+                      }}
+                    >
+                      {getTranslation(props.language, "subway")}
+                    </div>
+                    <Switch
+                      onChange={(checked) => {
+                        onPropChange(checked, station, "subway");
+                      }}
+                      checked={station.subway}
+                    />
+                  </div>
+                  <div style={{ display: "flex", marginBottom: "8px" }}>
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        width: "60px",
+                      }}
+                    >
+                      {getTranslation(props.language, "tram")}
+                    </div>
+                    <Switch
+                      onChange={(checked) => {
+                        onPropChange(checked, station, "tram");
+                      }}
+                      checked={station.tram}
+                    />
+                  </div>
+                  <div style={{ display: "flex", marginBottom: "8px" }}>
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        width: "60px",
+                      }}
+                    >
+                      {getTranslation(props.language, "bus")}
+                    </div>
+                    <Switch
+                      onChange={(checked) => {
+                        onPropChange(checked, station, "bus");
+                      }}
+                      checked={station.bus}
+                    />
+                  </div>
+                  <div style={{ display: "flex", marginBottom: "8px" }}>
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        width: "60px",
+                      }}
+                    >
+                      {getTranslation(props.language, "ferry")}
+                    </div>
+                    <Switch
+                      onChange={(checked) => {
+                        onPropChange(checked, station, "ferry");
+                      }}
+                      checked={station.ferry}
+                    />
+                  </div>
+                  <div style={{ display: "flex", marginBottom: "8px" }}>
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        width: "60px",
+                      }}
+                    >
+                      {getTranslation(props.language, "icIce")}
+                    </div>
+                    <Switch
+                      onChange={(checked) => {
+                        onPropChange(checked, station, "express");
+                      }}
+                      checked={station.express}
+                    />
+                  </div>
+                  <div style={{ display: "flex", marginBottom: "8px" }}>
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        width: "60px",
+                      }}
+                    >
+                      {getTranslation(props.language, "rbRe")}
+                    </div>
+                    <Switch
+                      onChange={(checked) => {
+                        onPropChange(checked, station, "regional");
+                      }}
+                      checked={station.regional}
+                    />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        width: "150px",
+                      }}
+                    >
+                      {getTranslation(
+                        props.language,
+                        "showDeparturesInDirection"
+                      )}
+                    </div>
+                    <StationFinder
+                      allowClear={true}
+                      initialValue={sanitizeDisplayText(station.destination?.name)}
+                      onSelect={(value) => {
+                        onPropChange(
+                          value != null
+                            ? {
+                                id: value.id,
+                                name: value.value,
+                              }
+                            : null,
+                          station,
+                          "destination"
+                        );
+                      }}
+                      selectedStations={props.selectedStations}
+                      language={props.language}
+                    />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        width: "150px",
+                      }}
+                    >
+                      {getTranslation(
+                        props.language,
+                        "showDeparturesInMinutes"
+                      )}
+                    </div>
+                    <InputNumber
+                      value={station.when}
+                      onChange={(value) => {
+                        onPropChange(value, station, "when");
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <div
+                      style={{
+                        marginRight: "8px",
+                        width: "150px",
+                      }}
+                    >
+                      {getTranslation(props.language, "amountOfResults")}
+                    </div>
+                    <InputNumber
+                      value={station.results}
+                      onChange={(value) => {
+                        onPropChange(value, station, "results");
+                      }}
+                    />
+                  </div>
+                </div>
+              </Card>
+            </Col>
+          ))}
+          {/* Entfernt: Button zum Hinzufügen einer weiteren Haltestelle */}
         </Row>
 
         <SettingsModal
@@ -423,17 +417,6 @@ const Settings = (props) => {
                 props.onAutoHideChange(checked);
               }}
               checked={props.autoHideEnabled}
-            />
-          </div>
-          <div style={{ display: "flex", marginBottom: "8px", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ marginRight: "8px", flex: 1 }}>
-              {getTranslation(props.language, "hideDepartureFromColumn")}
-            </div>
-            <Switch
-              onChange={(checked) => {
-                props.onHideDepartureColChange(checked);
-              }}
-              checked={props.hideDepartureCol}
             />
           </div>
         </Card>

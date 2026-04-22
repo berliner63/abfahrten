@@ -5,7 +5,7 @@ import { getTranslation } from "../dictionary";
 const DonationDisplay = (props) => {
   const [donationsList, setDonationsList] = useState([]);
   const FONTSIZE = props.fontSize + "px";
-  const FONTFAMILYNAME = "DotMatrix";
+  const FONTFAMILYNAME = "Roboto Condensed";
 
   const fetchDonations = async () => {
     try {
@@ -28,28 +28,20 @@ const DonationDisplay = (props) => {
     loadDonations();
   }, []);
 
-  const getDonationText = () => {
-    let donationText = getTranslation(props.language, "donationText");
-    donationsList.forEach((donation, index) => {
-      if (index === donationsList.length - 1) {
-        donationText += donation;
-      } else {
-        donationText += `${donation} *** `;
-      }
-    });
-    return donationText + " ***";
-  };
-
   return (
     <div style={{ padding: "16px" }}>
       <Marquee
         style={{
-          color: "orange",
+          color: "white",
           fontSize: FONTSIZE,
           fontFamily: FONTFAMILYNAME,
         }}
       >
-        {getDonationText()}
+         Dieses Projekt basiert auf dem Original von NikBLN:{'\u00A0'} 
+          <a href="https://github.com/NikBLN/weilSieDichLieben" style={{ color: "white", textDecoration: "underline" }} target="_blank" rel="noopener noreferrer">
+            github.com/NikBLN/weilSieDichLieben
+          </a>{' '}
+          {'\u00A0'}und wurde von berliner63 angepasst. ***{'\u00A0'}
       </Marquee>
     </div>
   );
