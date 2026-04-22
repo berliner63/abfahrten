@@ -1,15 +1,15 @@
-import { Row, Col, Popover, Modal } from "antd";
+import { Row, Col, Modal } from "antd";
 import React, { useState } from "react";
 import Marquee from "react-fast-marquee";
 import { getTranslation } from "../dictionary";
-import radarIcon from "../images/radar.png";
 import RadarMap from "./RadarMap";
 import useIsMobile from "../hooks/useIsMobile";
+import { sanitizeDisplayText } from "../utils/displayText";
 
 const DepartureTable = (props) => {
   const isMobile = useIsMobile();
   const FONTSIZE = props.fontSize;
-  const FONTFAMILYNAME = "DotMatrix";
+  const FONTFAMILYNAME = "Roboto Condensed";
   const mobileFontSize = isMobile ? FONTSIZE * 0.85 : FONTSIZE;
 
   const styles = {
@@ -25,12 +25,22 @@ const DepartureTable = (props) => {
       textOverflow: "ellipsis",
       whiteSpace: isMobile ? "nowrap" : "normal",
     },
-    headerRow: {
-      backgroundColor: "lightGray",
+    headerRowStation: {
+      backgroundColor: "#000",
+      color: "#fff",
       padding: isMobile ? "4px 8px" : "8px",
       position: "sticky",
       top: -8,
+      zIndex: 6,
+      fontFamily: FONTFAMILYNAME,
+    },
+    headerRowColumns: {
+      backgroundColor: "#f5f5f5",
+      padding: isMobile ? "4px 8px" : "8px",
+      position: "sticky",
+      top: isMobile ? 32 : 32,
       zIndex: 5,
+      fontFamily: FONTFAMILYNAME,
     },
     columnNameClickable: {
       fontSize: mobileFontSize,
@@ -57,9 +67,10 @@ const DepartureTable = (props) => {
       borderBottom: "1px solid #333",
       alignItems: "center",
       minHeight: mobileFontSize * 2,
+      fontFamily: FONTFAMILYNAME,
     },
     marquee: {
-      color: "orange",
+      color: "white",
       fontSize: mobileFontSize * 0.8,
       fontFamily: FONTFAMILYNAME,
       padding: "0 8px",
@@ -69,10 +80,7 @@ const DepartureTable = (props) => {
     },
   };
   const [isPaused, setIsPaused] = useState(false);
-  const [sortOrder, setSortOrder] = useState("off");
-  const [sortField, setSortField] = useState("departureName");
   const [radarModalOpen, setRadarModalOpen] = useState(false);
-  const [selectedStopLocation, setSelectedStopLocation] = useState(null);
 
   const sanitizeHTML = (html) => {
     const allowedTags = {
@@ -119,50 +127,8 @@ const DepartureTable = (props) => {
     return remarks.map((remark) => remark.text).join(" *** ");
   };
 
-  const handleSort = (field) => {
-    if (field !== sortField) {
-      setSortField(field);
-      setSortOrder("asc");
-    } else {
-      setSortOrder((current) => {
-        switch (current) {
-          case "off":
-            return "asc";
-          case "asc":
-            return "desc";
-          case "desc":
-            return "off";
-          default:
-            return "off";
-        }
-      });
-    }
-  };
-
   const getSortedData = () => {
-    if (sortOrder === "off")
-      return props.dataSource.sort((a, b) => a.when - b.when);
-
-    return [...props.dataSource].sort((a, b) => {
-      const comparison = a[sortField].localeCompare(b[sortField]);
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
-  };
-
-  // Group data by departureName for mobile view
-  const getGroupedData = () => {
-    const sortedData = getSortedData();
-    const groups = {};
-
-    sortedData.forEach((item) => {
-      const key = item.departureName;
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(item);
-    });
-
-    return groups;
+    return props.dataSource.sort((a, b) => a.when - b.when);
   };
 
   return (
@@ -183,38 +149,96 @@ const DepartureTable = (props) => {
         `}
       </style>
 
-      {/* Desktop Header */}
-      {!isMobile && (
-        <Row style={styles.headerRow}>
-          <Col style={styles.columnName} span={24}>
-            {/* Zeige die aktuelle Haltestelle im Header */}
-            {props.dataSource.length > 0 && (
-              <span>
-                {getTranslation(props.language, "departure")}: {props.dataSource[0].departureName}
-              </span>
-            )}
+
+
+      {/* Station name header (both views) */}
+      {props.dataSource.length > 0 && (
+        <Row style={styles.headerRowStation}>
+          <Col
+            style={{
+              ...styles.columnName,
+              textAlign: isMobile ? "left" : "center",
+            }}
+            span={24}
+          >
+            {sanitizeDisplayText(props.dataSource[0].departureName)}
           </Col>
         </Row>
       )}
 
-      {/* Mobile Header - without "Abfahrt von" */}
-      {isMobile && (
-        <Row style={styles.headerRow}>
-          <Col style={styles.columnName} span={4}>
-            {getTranslation(props.language, "line")}
-          </Col>
-          <Col style={styles.columnName} span={12}>
-            {getTranslation(props.language, "destination")}
-          </Col>
-          <Col style={{ ...styles.columnName, textAlign: "right" }} span={8}>
-            {getTranslation(props.language, "when")}
-          </Col>
-        </Row>
-      )}
+      {/* Column headers (both views) */}
+      <Row style={styles.headerRowColumns}>
+        <Col style={styles.columnName} span={isMobile ? 4 : 4}>
+          {getTranslation(props.language, "line")}
+        </Col>
+        <Col style={styles.columnName} span={isMobile ? 12 : 14}>
+          {getTranslation(props.language, "destination")}
+        </Col>
+        <Col style={{ ...styles.columnName, textAlign: isMobile ? "right" : "left" }} span={isMobile ? 8 : 6}>
+          {getTranslation(props.language, "departure")}
+        </Col>
+      </Row>
+
+      {/* Mobile: Abfahrten anzeigen */}
+      {isMobile && getSortedData().map((data) => {
+        const remarkText = processRemarks(data.remarks);
+        // Ersetze '->' durch '>' im Zieltext
+        const directionText = sanitizeDisplayText(data.direction || "").replace(/->/g, ">");
+        return (
+          <div
+            key={data.key}
+            style={{ display: "flex", flexDirection: "column" }}
+          >
+            <Row style={styles.dataRow}>
+              <Col style={styles.column} span={4}>
+                {data.lineName}
+              </Col>
+              <Col style={styles.column} span={12}>
+                {directionText}
+              </Col>
+              <Col style={{ ...styles.column, textAlign: "right" }} span={8}>
+                {data.when == null
+                  ? getTranslation(props.language, "cancelled")
+                  : (() => {
+                      let timeString = "";
+                      if (data.departureTime) {
+                        const date = new Date(data.departureTime);
+                        timeString = date.toLocaleTimeString(props.language === "de" ? "de-DE" : "en-GB", { hour: "2-digit", minute: "2-digit" });
+                      }
+                      if (data.when > 0) {
+                        return `${timeString} | ${data.when} ${getTranslation(props.language, "minutes")}`;
+                      } else {
+                        return `${timeString} | ${getTranslation(props.language, "now")}`;
+                      }
+                    })()
+                }
+              </Col>
+            </Row>
+            {remarkText && props.remarksVisibility && (
+              <Marquee
+                speed={30}
+                play={!isPaused}
+                style={styles.marquee}
+                onMouseEnter={() => setIsPaused(true)}
+                onMouseLeave={() => setIsPaused(false)}
+              >
+                <span
+                  dangerouslySetInnerHTML={{ __html: sanitizeHTML(remarkText) }}
+                  onClick={(e) =>
+                    e.target.tagName === "A" && e.stopPropagation()
+                  }
+                />
+              </Marquee>
+            )}
+          </div>
+        );
+      })}
 
       {/* Desktop: Regular view */}
       {!isMobile && getSortedData().map((data) => {
         const remarkText = processRemarks(data.remarks);
+        // Ersetze '->' durch '>' im Zieltext
+        const directionText = sanitizeDisplayText(data.direction || "").replace(/->/g, ">" );
         return (
           <div
             key={data.key}
@@ -225,13 +249,12 @@ const DepartureTable = (props) => {
                 {data.lineName}
               </Col>
               <Col style={styles.column} span={14}>
-                {data.direction}
+                {directionText}
               </Col>
               <Col style={styles.column} span={6}>
                 {data.when == null
                   ? getTranslation(props.language, "cancelled")
                   : (() => {
-                      // Uhrzeit berechnen
                       let timeString = "";
                       if (data.departureTime) {
                         const date = new Date(data.departureTime);
