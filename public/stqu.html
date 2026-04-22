@@ -39,18 +39,11 @@
       overflow: hidden;
     }
 
-    .header,
-    .footer {
-      padding: 10px 12px;
-      color: var(--muted);
-      font-size: var(--fs-meta);
+    .meta,
+    .err {
+      padding: 14px 12px;
       text-align: center;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .footer {
-      border-top: 1px solid var(--line);
-      border-bottom: 0;
+      font-size: var(--fs-meta);
     }
 
     .rows { padding: 0 12px; }
@@ -88,24 +81,15 @@
       min-width: 3.2em;
     }
 
-    .meta,
-    .err {
-      padding: 14px 12px;
-      text-align: center;
-      font-size: var(--fs-meta);
-    }
-
     .meta { color: var(--muted); }
     .err { color: var(--error); }
   </style>
 </head>
 <body>
   <main class="departures" id="departures" aria-live="polite">
-    <div class="header">Stendaler/Quedlinburger Str. → Betriebshof Marzahn</div>
     <div class="rows" id="rows">
       <div class="meta">Lade Abfahrten …</div>
     </div>
-    <div class="footer" id="footer">—</div>
   </main>
 
   <script>
@@ -206,10 +190,6 @@
       }).join("");
     }
 
-    function setFooter(text) {
-      document.getElementById("footer").textContent = text;
-    }
-
     async function load() {
       const rows = document.getElementById("rows");
       rows.innerHTML = `<div class="meta">Lade Abfahrten …</div>`;
@@ -224,10 +204,8 @@
         }
 
         renderRows(filtered);
-        setFooter(formatNow());
       } catch (e) {
         rows.innerHTML = `<div class="err">${escapeHtml(e?.message || "Unbekannter Fehler")}</div>`;
-        setFooter("Aktualisierung fehlgeschlagen");
       }
     }
 
