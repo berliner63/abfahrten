@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pünktlichkeitsabgleich</title>
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="shortcut icon" href="./logo.png">
+  <link rel="apple-touch-icon" href="./logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body { font-family: 'Roboto Condensed', sans-serif; background: #000; color: #fff; margin: 0; padding: 0 8px; }
+    .wrap { width: 100%; max-width: 920px; margin: 18px auto; }
+    h1 { margin: 0 0 8px 0; font-size: 34px; }
+    .sub { color: #aaa; margin-bottom: 14px; font-size: 14px; }
+    .panel {
+      border: 1px solid #333;
+      background: #0d0d0d;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 8px;
+      align-items: center;
+      justify-content: start;
+    }
+    button {
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 16px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 8px 10px;
+    }
+    button { cursor: pointer; }
+    button:hover { background: #1b1b1b; }
+    .meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 14px; color: #c2c2c2; }
+    .ok { color: #8bc34a; }
+    .warn { color: #ffd54f; }
+    .err { color: #ef9a9a; }
+    table { border-collapse: collapse; table-layout: fixed; width: 100%; background: #000; }
+    th, td { border: 1px solid #333; padding: 8px 7px; text-align: left; }
+    th { background: #111; }
+    tr:nth-child(even) { background: #0d0d0d; }
+    td:nth-child(1) { width: 10%; }
+    td:nth-child(2) { width: 8%; }
+    td:nth-child(3) { width: 10%; }
+    td:nth-child(4) { width: 12%; }
+    td:nth-child(5) { width: 17%; }
+    td:nth-child(6) { width: 17%; }
+    td:nth-child(7) { width: 26%; }
+    .chip { display: inline-block; padding: 2px 6px; border: 1px solid #333; }
+    .chip.ok { border-color: #2e7d32; color: #8bc34a; }
+    .chip.warn { border-color: #f9a825; color: #ffd54f; }
+    .chip.err { border-color: #c62828; color: #ef9a9a; }
+    .leave-hint {
+      display: none;
+      margin-top: 18px;
+      font-size: 34px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+    .leave-hint.ok { color: #8bc34a; }
+    .leave-hint.warn { color: #ffd54f; }
+    .leave-hint.err { color: #ef9a9a; }
+    .note { color: #9a9a9a; font-size: 13px; margin-top: 10px; }
+    @media (max-width: 1024px), (pointer: coarse) {
+      h1 { font-size: 28px; }
+      .controls { grid-template-columns: 1fr; }
+      th, td { font-size: 14px; }
+      .leave-hint { font-size: 28px; }
+      td:nth-child(5),
+      td:nth-child(6),
+      td:nth-child(7) { word-break: break-word; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Pünktlichkeitsabgleich Mad-Plan vs. BVG</h1>
+    <div class="sub">Stop: Stendaler Str./Quedlinburger Str. (900175011). Berücksichtigt werden nur Fahrten, bei denen Betriebshof Marzahn später im Linienverlauf liegt.</div>
+
+    <div class="panel">
+      <div class="controls">
+        <button id="refreshBtn" type="button">Jetzt aktualisieren</button>
+        <button id="toggleAutoBtn" type="button">Auto: an</button>
+      </div>
+      <div class="meta" style="margin-top:10px;">
+        <div id="statusText">Status: wird geladen ...</div>
+        <div id="sourceText">Quelle: -</div>
+        <div id="countsText">Treffer: -</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Soll (Plan)</th>
+          <th>Linie</th>
+          <th>Ist (BVG)</th>
+          <th>Delta</th>
+          <th>Alt davor</th>
+          <th>Alt danach</th>
+          <th>Hinweis</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="7">Lade Daten ...</td></tr>
+      </tbody>
+    </table>
+
+    <div id="leaveHint" class="leave-hint"></div>
+
+    <div class="note">
+      Parser-Ziel auf der Mad-Seite: Einträge im Muster <b>HH:MM | Linie</b> in der Spalte Bemerkungen. Der Hauptabgleich nutzt nur Fahrten, die nach dieser Haltestelle noch den Betriebshof Marzahn anfahren. Die Alternativen davor/danach werden über alle Linien in derselben Fahrtrichtung ermittelt.
+    </div>
+  </div>
+
+  <script>
+    const STOP_ID = '900175011';
+    const MAD_DOC_URL = 'https://www.mad-doc.eu/dienste/andreas/';
+    const BVG_BASES = [
+      'https://v6.bvg.transport.rest',
+      'https://v6.vbb.transport.rest',
+      'https://v6.db.transport.rest'
+    ];
+    const BETRIEBSHOF_STOP_ID = '900170010';
+    const MAX_MATCH_MINUTES = 20;
+
+    let autoTimer = null;
+    let countdownTimer = null;
+    let autoEnabled = true;
+    let lastDepartures = [];
+    let lastAllDepartures = [];
+    let lastPlanRows = [];
+    const tripFilterCache = new Map();
+
+    function setStatus(text, cls) {
+      const el = document.getElementById('statusText');
+      el.textContent = 'Status: ' + text;
+      el.className = cls || '';
+    }
+
+    function getTodayLabel() {
+      const now = new Date();
+      const wd = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][now.getDay()];
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      return wd + ', ' + dd + '.' + mm + '.';
+    }
+
+    function extractTodaySection(text) {
+      const today = getTodayLabel();
+      const start = text.indexOf(today);
+      if (start < 0) return text;
+
+      const after = text.slice(start + today.length);
+      const nextDateMatch = after.match(/(?:Mo|Di|Mi|Do|Fr|Sa|So),\s*\d{2}\.\d{2}\./);
+      if (!nextDateMatch) return text.slice(start);
+
+      const nextPos = start + today.length + nextDateMatch.index;
+      return text.slice(start, nextPos);
+    }
+
+    function normalizeLine(raw) {
+      return (raw || '').trim().toUpperCase();
+    }
+
+    function looksLikeLine(line) {
+      // 18, M6, X54, U5, S7 etc.
+      return /^([A-Z]{0,2}\d+[A-Z]?)$/.test(line);
+    }
+
+    function parsePlanRows(text) {
+      const section = extractTodaySection(text);
+      const result = [];
+      const rx = /(\d{1,2}:\d{2})\s*\|\s*([A-Za-z0-9]+)/g;
+      let m;
+      while ((m = rx.exec(section)) !== null) {
+        const hhmm = m[1];
+        const line = normalizeLine(m[2]);
+        if (!looksLikeLine(line)) continue;
+        result.push({ hhmm, line });
+      }
+
+      // de-dupe
+      const unique = [];
+      const seen = new Set();
+      result.forEach((r) => {
+        const k = r.hhmm + '|' + r.line;
+        if (!seen.has(k)) {
+          seen.add(k);
+          unique.push(r);
+        }
+      });
+      return unique;
+    }
+
+    function buildMadDocSources() {
+      const cacheBuster = Date.now();
+      const targetUrl = MAD_DOC_URL + (MAD_DOC_URL.includes('?') ? '&' : '?') + '_=' + cacheBuster;
+      return [
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl),
+        'https://r.jina.ai/http://www.mad-doc.eu/dienste/andreas/?_=' + cacheBuster
+      ];
+    }
+
+    async function fetchTextWithFallback() {
+      let lastErr = null;
+      for (const url of buildMadDocSources()) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const txt = await res.text();
+          if (!txt || txt.length < 50) throw new Error('Leere Antwort');
+          document.getElementById('sourceText').textContent = 'Quelle: ' + url;
+          return txt;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error('Keine Quelle erreichbar');
+    }
+
+    async function fetchDepartures() {
+      let lastErr = null;
+      for (const base of BVG_BASES) {
+        try {
+          const url = base + '/stops/' + encodeURIComponent(STOP_ID) + '/departures?duration=240&language=de';
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status + ' @ ' + base);
+          const data = await res.json();
+          const deps = Array.isArray(data) ? data : (Array.isArray(data.departures) ? data.departures : []);
+          if (!deps.length) throw new Error('Keine Abfahrten @ ' + base);
+          return { deps, base };
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error('API nicht erreichbar');
+    }
+
+    function toTodayDate(hhmm) {
+      const [h, m] = hhmm.split(':').map((n) => parseInt(n, 10));
+      const d = new Date();
+      d.setHours(h, m, 0, 0);
+      return d;
+    }
+
+    function minutesDiff(a, b) {
+      return Math.round((a.getTime() - b.getTime()) / 60000);
+    }
+
+    function classify(delta, deltaLabel) {
+      if (deltaLabel) {
+        if (deltaLabel === 'Ausfall?') return { cls: 'warn', txt: deltaLabel };
+        if (deltaLabel === 'API-Ausfall') return { cls: 'err', txt: deltaLabel };
+        return { cls: 'err', txt: deltaLabel };
+      }
+      if (delta === null) return { cls: 'err', txt: 'kein Treffer' };
+      if (Math.abs(delta) <= 1) return { cls: 'ok', txt: 'pünktlich' };
+      if (delta > 1) return { cls: 'warn', txt: '+' + delta + ' min später' };
+      return { cls: 'err', txt: delta + ' min früher' };
+    }
+
+    function stopNameMatchesBetriebshof(name) {
+      return String(name || '').toLowerCase().includes('betriebshof marzahn');
+    }
+
+    async function fetchTripById(tripId, lineName, preferredBase) {
+      const bases = [preferredBase, ...BVG_BASES.filter((b) => b !== preferredBase)];
+      let lastErr = null;
+      for (const base of bases) {
+        try {
+          const url = base + '/trips/' + encodeURIComponent(tripId) + '?lineName=' + encodeURIComponent(lineName || '');
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return await res.json();
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error('Trip konnte nicht geladen werden');
+    }
+
+    function hasBetriebshofDownstream(tripData) {
+      const trip = tripData && tripData.trip ? tripData.trip : tripData;
+      const stopovers = Array.isArray(trip && trip.stopovers) ? trip.stopovers : [];
+      if (!stopovers.length) return false;
+
+      let currentIndex = -1;
+      let bhmIndex = -1;
+
+      stopovers.forEach((s, idx) => {
+        const id = s && s.stop ? String(s.stop.id || '') : '';
+        const name = s && s.stop ? String(s.stop.name || '') : '';
+        if (id === STOP_ID && currentIndex === -1) currentIndex = idx;
+        if ((id === BETRIEBSHOF_STOP_ID || stopNameMatchesBetriebshof(name)) && bhmIndex === -1) bhmIndex = idx;
+      });
+
+      return currentIndex >= 0 && bhmIndex > currentIndex;
+    }
+
+    async function filterDeparturesByBetriebshof(deps, base) {
+      const checks = await Promise.all(deps.map(async (d) => {
+        const tripId = d && d.tripId ? String(d.tripId) : '';
+        const lineName = d && d.line && d.line.name ? String(d.line.name) : '';
+        if (!tripId) return false;
+
+        const cacheKey = tripId;
+        if (tripFilterCache.has(cacheKey)) return tripFilterCache.get(cacheKey);
+
+        try {
+          const trip = await fetchTripById(tripId, lineName, base);
+          const ok = hasBetriebshofDownstream(trip);
+          tripFilterCache.set(cacheKey, ok);
+          return ok;
+        } catch (e) {
+          // Fallback-Heuristik, wenn Trip-Details gerade nicht verfuegbar sind.
+          const direction = String(d.direction || '').toLowerCase();
+          const heuristic = direction.includes('marzahn') && !direction.includes('betriebshof marzahn');
+          tripFilterCache.set(cacheKey, heuristic);
+          return heuristic;
+        }
+      }));
+
+      return deps.filter((_, i) => checks[i]);
+    }
+
+    function formatAltCandidate(c) {
+      return c.actual.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' | ' + c.line;
+    }
+
+    function findAlternatives(allCandidates, planned) {
+      let before = null;
+      let after = null;
+      let bestBefore = Infinity;
+      let bestAfter = Infinity;
+
+      allCandidates.forEach((c) => {
+        const delta = minutesDiff(c.actual, planned);
+        if (delta < 0) {
+          const abs = Math.abs(delta);
+          if (abs < bestBefore) {
+            bestBefore = abs;
+            before = c;
+          }
+        } else if (delta > 0) {
+          if (delta < bestAfter) {
+            bestAfter = delta;
+            after = c;
+          }
+        }
+      });
+
+      return {
+        before: before ? formatAltCandidate(before) : '-',
+        after: after ? formatAltCandidate(after) : '-'
+      };
+    }
+
+    function mapDeparturesToCandidates(deps) {
+      return deps
+        .map((d, idx) => ({
+          id: idx,
+          line: normalizeLine(d.line && d.line.name ? d.line.name : ''),
+          actual: d.when ? new Date(d.when) : (d.plannedWhen ? new Date(d.plannedWhen) : null),
+          direction: String(d.direction || '').replace(/\s*\(Berlin\)\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim()
+        }))
+        .filter((d) => d.actual && d.line);
+    }
+
+    function matchRows(planRows, filteredDeps, allDeps, apiAvailable) {
+      const candidates = mapDeparturesToCandidates(filteredDeps);
+      const allowedDirections = new Set(candidates.map((c) => c.direction).filter(Boolean));
+      const allDirectionCandidates = mapDeparturesToCandidates(allDeps)
+        .filter((c) => allowedDirections.size === 0 || allowedDirections.has(c.direction));
+
+      if (!apiAvailable) {
+        return planRows.map((p) => ({
+          planned: p.hhmm,
+          line: p.line,
+          actual: '-',
+          delta: null,
+          deltaLabel: 'API-Ausfall',
+          altBefore: '-',
+          altAfter: '-',
+          note: 'Keine Live-Daten verfügbar'
+        }));
+      }
+
+      const used = new Set();
+      return planRows.map((p) => {
+        const planned = toTodayDate(p.hhmm);
+        let best = null;
+        let bestAbs = Infinity;
+
+        for (const c of candidates) {
+          if (used.has(c.id)) continue;
+          if (c.line !== p.line) continue;
+          const delta = minutesDiff(c.actual, planned);
+          const abs = Math.abs(delta);
+          if (abs < bestAbs) {
+            best = { c, delta };
+            bestAbs = abs;
+          }
+        }
+
+        if (best && bestAbs <= MAX_MATCH_MINUTES) {
+          used.add(best.c.id);
+          const alts = findAlternatives(allDirectionCandidates, planned);
+          return {
+            planned: p.hhmm,
+            line: p.line,
+            actual: best.c.actual.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+            delta: best.delta,
+            altBefore: alts.before,
+            altAfter: alts.after,
+            note: best.c.direction
+          };
+        }
+
+        const alts = findAlternatives(allDirectionCandidates, planned);
+
+        return {
+          planned: p.hhmm,
+          line: p.line,
+          actual: '-',
+          delta: null,
+          deltaLabel: 'Ausfall?',
+          altBefore: alts.before,
+          altAfter: alts.after,
+          note: 'Keine passende Abfahrt mit Betriebshof Marzahn im Verlauf gefunden'
+        };
+      });
+    }
+
+    function renderRows(rows) {
+      const tbody = document.getElementById('rows');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="7">Keine passenden HH:MM | Linie-Einträge für heute gefunden.</td></tr>';
+        document.getElementById('countsText').textContent = 'Treffer: 0';
+        updateLeaveHint([]);
+        return;
+      }
+
+      let ok = 0;
+      tbody.innerHTML = rows.map((r) => {
+        const c = classify(r.delta, r.deltaLabel);
+        if (c.cls === 'ok') ok += 1;
+        return '<tr>' +
+          '<td>' + r.planned + '</td>' +
+          '<td>' + r.line + '</td>' +
+          '<td>' + r.actual + '</td>' +
+          '<td><span class="chip ' + c.cls + '">' + c.txt + '</span></td>' +
+            '<td>' + r.altBefore + '</td>' +
+            '<td>' + r.altAfter + '</td>' +
+          '<td>' + r.note + '</td>' +
+          '</tr>';
+      }).join('');
+
+      document.getElementById('countsText').textContent = 'Treffer: ' + ok + ' / ' + rows.length + ' pünktlich';
+      updateLeaveHint(rows);
+    }
+
+    function updateLeaveHint(rows) {
+      const hint = document.getElementById('leaveHint');
+      const now = new Date();
+      let nextPlanned = null;
+
+      rows.forEach((row) => {
+        const planned = toTodayDate(row.planned);
+        const untilDeparture = Math.floor((planned.getTime() - now.getTime()) / 60000);
+        if (untilDeparture < 10 || untilDeparture > 40) return;
+        if (!nextPlanned || planned < nextPlanned) {
+          nextPlanned = planned;
+        }
+      });
+
+      if (!nextPlanned) {
+        hint.style.display = 'none';
+        hint.textContent = '';
+        hint.className = 'leave-hint';
+        return;
+      }
+
+      const minutesUntilLeave = Math.max(0, Math.ceil((nextPlanned.getTime() - 10 * 60000 - now.getTime()) / 60000));
+      let urgencyClass = 'ok';
+      if (minutesUntilLeave <= 5) {
+        urgencyClass = 'err';
+      } else if (minutesUntilLeave <= 10) {
+        urgencyClass = 'warn';
+      }
+
+      hint.textContent = 'Du musst in ' + minutesUntilLeave + ' Minuten losgehen!';
+      hint.className = 'leave-hint ' + urgencyClass;
+      hint.style.display = 'block';
+    }
+
+    function startCountdownTimer() {
+      if (countdownTimer) clearInterval(countdownTimer);
+      countdownTimer = setInterval(() => {
+        updateLeaveHint(lastPlanRows.map((row) => ({ planned: row.hhmm })));
+      }, 1000);
+    }
+
+    async function loadAll() {
+      try {
+        setStatus('Lade Plan und Live-Abfahrten ...', 'warn');
+        const [planResult, depResult] = await Promise.allSettled([fetchTextWithFallback(), fetchDepartures()]);
+
+        if (planResult.status !== 'fulfilled') {
+          throw new Error(planResult.reason && planResult.reason.message ? planResult.reason.message : 'Plan konnte nicht geladen werden');
+        }
+        lastPlanRows = parsePlanRows(planResult.value);
+
+        if (!lastPlanRows.length) {
+          setStatus('Keine passenden Plan-Einträge gefunden.', 'err');
+          renderRows([]);
+          return;
+        }
+
+        let apiAvailable = false;
+        if (depResult.status === 'fulfilled') {
+          apiAvailable = true;
+          lastAllDepartures = depResult.value.deps;
+          lastDepartures = await filterDeparturesByBetriebshof(depResult.value.deps, depResult.value.base);
+        } else {
+          lastAllDepartures = [];
+          lastDepartures = [];
+        }
+
+        const matched = matchRows(lastPlanRows, lastDepartures, lastAllDepartures, apiAvailable);
+        renderRows(matched);
+
+        if (!apiAvailable) {
+          setStatus('API-Ausfall: Es werden nur Plan-Daten angezeigt.', 'err');
+        } else if (!lastDepartures.length) {
+          setStatus('API ok, aber keine Fahrten mit Betriebshof Marzahn im Verlauf gefunden.', 'warn');
+        } else {
+          setStatus('Aktualisiert (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
+        }
+      } catch (e) {
+        setStatus('Fehler: ' + e.message, 'err');
+        document.getElementById('rows').innerHTML = '<tr><td colspan="7">Fehler beim Laden der Daten.</td></tr>';
+      }
+    }
+
+    function toggleAuto() {
+      autoEnabled = !autoEnabled;
+      const btn = document.getElementById('toggleAutoBtn');
+      btn.textContent = 'Auto: ' + (autoEnabled ? 'an' : 'aus');
+      if (autoEnabled) {
+        autoTimer = setInterval(loadAll, 60000);
+      } else if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', loadAll);
+    document.getElementById('toggleAutoBtn').addEventListener('click', toggleAuto);
+
+    loadAll();
+    autoTimer = setInterval(loadAll, 60000);
+    startCountdownTimer();
+  </script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>Abfahrten Stendaler/Quedlinburger Str. &rarr; Betriebshof Marzahn</title>
+  <style>
+    :root {
+      --bg: #000;
+      --panel: #111;
+      --line: #222;
+      --text: #fff;
+      --muted: #b6b6b6;
+      --error: #ef9a9a;
+      --radius: 10px;
+      --fs-ticker: 24px;
+      --ticker-duration: 40s;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Roboto Condensed", Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+    }
+
+    .ticker-shell {
+      width: 100%;
+      max-width: 1280px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 12px #0008;
+      overflow: hidden;
+    }
+
+    .ticker {
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 10px 0;
+      font-size: var(--fs-ticker);
+      line-height: 1.1;
+    }
+
+    .ticker-track {
+      display: inline-flex;
+      align-items: center;
+      width: max-content;
+      animation: ticker-scroll var(--ticker-duration) linear infinite;
+      will-change: transform;
+    }
+
+    .ticker-chunk {
+      display: inline-flex;
+      align-items: center;
+      padding-right: 48px;
+    }
+
+    .item {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .line-name { color: #ffffff; }
+    .direction { color: #d7d7d7; font-weight: 400; }
+    .time { color: #ffffff; }
+
+    .sep {
+      color: var(--muted);
+      padding: 0 16px;
+      font-weight: 400;
+    }
+
+    .meta,
+    .err {
+      width: 100%;
+      text-align: center;
+      padding: 0 12px;
+    }
+
+    .meta { color: var(--muted); }
+    .err { color: var(--error); }
+
+    @keyframes ticker-scroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+  </style>
+</head>
+<body>
+  <main class="ticker-shell" aria-live="polite">
+    <div class="ticker" id="ticker">
+      <div class="meta">Lade Abfahrten &hellip;</div>
+    </div>
+  </main>
+
+  <script>
+    const FROM_STOP = "900175011";
+    const TO_STOP = "900170010";
+    const API_BASES = ["https://v6.bvg.transport.rest", "https://v6.vbb.transport.rest"];
+    const MAX_RESULTS = 5;
+    const REFRESH_MS = 60000;
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatTime(iso) {
+      if (!iso) return "--:--";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "--:--";
+      return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    async function fetchWithRetry(url, retries = 2) {
+      let lastError;
+      for (let i = 0; i <= retries; i++) {
+        try {
+          const res = await fetch(url, { cache: "no-store" });
+          if (res.ok) return res;
+          lastError = new Error(`HTTP ${res.status}`);
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      throw lastError || new Error("Netzwerkfehler");
+    }
+
+    async function fetchDepartures() {
+      let lastErr;
+      for (const base of API_BASES) {
+        try {
+          const url = `${base}/stops/${FROM_STOP}/departures?duration=90&results=30&language=de`;
+          const res = await fetchWithRetry(url);
+          const data = await res.json();
+          return Array.isArray(data.departures) ? data.departures : [];
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error("API nicht erreichbar");
+    }
+
+    async function tripHasStop(tripId) {
+      if (!tripId) return false;
+      for (const base of API_BASES) {
+        try {
+          const url = `${base}/trips/${encodeURIComponent(tripId)}?stopovers=true&language=de`;
+          const res = await fetchWithRetry(url);
+          const data = await res.json();
+
+          const stopovers = data?.trip?.stopovers;
+          if (!Array.isArray(stopovers)) continue;
+
+          const fromIndex = stopovers.findIndex(s => String(s?.stop?.id || "") === FROM_STOP);
+          const future = fromIndex >= 0 ? stopovers.slice(fromIndex + 1) : stopovers;
+
+          return future.some(s => String(s?.stop?.id || "") === TO_STOP);
+        } catch (_) {}
+      }
+      return false;
+    }
+
+    function renderTicker(deps) {
+      const ticker = document.getElementById("ticker");
+
+      if (!deps.length) {
+        ticker.innerHTML = `<div class="meta">Keine passenden Abfahrten gefunden.</div>`;
+        return;
+      }
+
+      const items = deps.map(dep => {
+        const line = escapeHtml(dep?.line?.name || "-");
+        const direction = escapeHtml(dep?.direction || "-");
+        const time = escapeHtml(formatTime(dep?.when));
+        return `<span class="item"><span class="line-name">${line}</span> <span class="direction">Richtung ${direction}</span> <span class="time">${time} Uhr</span></span>`;
+      });
+
+      const html = items.join('<span class="sep">&middot;</span>');
+      ticker.innerHTML = `<div class="ticker-track" id="tickerTrack"><div class="ticker-chunk">${html}</div><div class="ticker-chunk" aria-hidden="true">${html}</div></div>`;
+
+      const plainLength = deps
+        .map(dep => `${dep?.line?.name || ""} Richtung ${dep?.direction || ""} ${formatTime(dep?.when)} Uhr`)
+        .join(" ")
+        .length;
+      const duration = Math.max(20, Math.min(90, Math.round(plainLength / 3.5)));
+      const track = document.getElementById("tickerTrack");
+      track.style.setProperty("--ticker-duration", `${duration}s`);
+    }
+
+    async function load() {
+      const ticker = document.getElementById("ticker");
+      ticker.innerHTML = `<div class="meta">Lade Abfahrten &hellip;</div>`;
+
+      try {
+        const deps = await fetchDepartures();
+        const filtered = [];
+
+        for (const dep of deps) {
+          if (filtered.length >= MAX_RESULTS) break;
+          if (await tripHasStop(dep?.tripId)) filtered.push(dep);
+        }
+
+        renderTicker(filtered);
+      } catch (e) {
+        ticker.innerHTML = `<div class="err">${escapeHtml(e?.message || "Unbekannter Fehler")}</div>`;
+      }
+    }
+
+    load();
+    setInterval(load, REFRESH_MS);
+  </script>
+</body>
+</html>

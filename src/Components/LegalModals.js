@@ -10,11 +10,11 @@ const privacyContent = {
       <Paragraph>
         <b>Verantwortlich für diese Website:</b>
         <br />
-        Nikolas Tsombanis
+        Andreas Kuhl
         <br />
         E-Mail:{" "}
-        <a href="mailto:weilsiedichlieben@posteo.de">
-          weilsiedichlieben@posteo.de
+        <a href="mailto:andreas.kuhl@magenta.de">
+          andreas.kuhl@magenta.de
         </a>
       </Paragraph>
       <Title level={5}>1. Allgemeines</Title>
@@ -51,31 +51,13 @@ const privacyContent = {
         einschränken oder verhindern. Die Deaktivierung von Cookies kann jedoch
         die Funktionalität der Website beeinträchtigen.
       </Paragraph>
-      <Title level={5}>4. Werbung auf Reddit</Title>
-      <Paragraph>
-        Um die Website bekannter zu machen, werden Anzeigen über die Plattform{" "}
-        <b>Reddit</b> geschaltet. Dabei kann Reddit (Betreiber: Reddit Inc.,
-        USA) unter Umständen personenbezogene Daten wie Ihre IP-Adresse oder das
-        Nutzerverhalten über Tracking-Technologien (z. B. Reddit Pixel)
-        erfassen. Weitere Informationen finden Sie in der{" "}
-        <a href="https://www.redditinc.com/policies/privacy-policy">
-          Datenschutzerklärung von Reddit
-        </a>
-        .
-      </Paragraph>
-      <Title level={5}>5. Hosting durch Hetzner</Title>
-      <Paragraph>
-        Diese Website wird bei Hetzner Online GmbH, Industriestr. 25, 91710
-        Gunzenhausen, gehostet. Hetzner speichert IP-Adressen in Server-Logfiles
-        zur Erkennung und Abwehr von Angriffen.
-      </Paragraph>
-      <Title level={5}>6. Kontakt zum Datenschutz</Title>
+      <Title level={5}>4. Kontakt zum Datenschutz</Title>
       <Paragraph>
         Bei Fragen zur Erhebung, Verarbeitung oder Nutzung Ihrer
         personenbezogenen Daten wenden Sie sich bitte an:
-        <br /> <b>Nikolas Tsombanis</b> –{" "}
-        <a href="mailto:weilsiedichlieben@posteo.de">
-          weilsiedichlieben@posteo.de
+        <br /> <b>Andreas Kuhl</b> –{" "}
+        <a href="mailto:andreas.kuhl@magenta.de">
+          andreas.kuhl@magenta.de
         </a>
       </Paragraph>
     </div>
@@ -85,11 +67,11 @@ const privacyContent = {
       <Paragraph>
         <b>Responsible person for this website:</b>
         <br />
-        Nikolas Tsombanis
+        Andreas Kuhl
         <br />
         Email:{" "}
-        <a href="mailto:weilsiedichlieben@posteo.de">
-          weilsiedichlieben@posteo.de
+        <a href="mailto:andreas.kuhl@magenta.de">
+          andreas.kuhl@magenta.de
         </a>
       </Paragraph>
       <Title level={5}>1. General Information</Title>
@@ -118,29 +100,12 @@ const privacyContent = {
         cookies via your browser settings. Disabling cookies may affect website
         functionality.
       </Paragraph>
-      <Title level={5}>4. Advertising via Reddit</Title>
-      <Paragraph>
-        This website is advertised on <b>Reddit</b>. Reddit (operated by Reddit
-        Inc., USA) may collect personal data such as your IP address or browsing
-        behavior via tracking technologies like Reddit Pixel. For more
-        information, see Reddit's{" "}
-        <a href="https://www.redditinc.com/policies/privacy-policy">
-          Privacy Policy
-        </a>
-        .
-      </Paragraph>
-      <Title level={5}>5. Hosting by Hetzner</Title>
-      <Paragraph>
-        This website is hosted by Hetzner Online GmbH, Industriestr. 25, 91710
-        Gunzenhausen, Germany. Server log data (such as IP addresses) is stored
-        for security purposes.
-      </Paragraph>
-      <Title level={5}>6. Contact</Title>
+      <Title level={5}>4. Contact</Title>
       <Paragraph>
         For questions related to your data, contact:
-        <br /> <b>Nikolas Tsombanis</b> –{" "}
-        <a href="mailto:weilsiedichlieben@posteo.de">
-          weilsiedichlieben@posteo.de
+        <br /> <b>Andreas Kuhl</b> –{" "}
+        <a href="mailto:andreas.kuhl@magenta.de">
+          andreas.kuhl@magenta.de
         </a>
       </Paragraph>
     </div>
@@ -151,11 +116,11 @@ const termsContent = {
   de: (
     <div style={{ maxHeight: "300px", overflow: "auto" }}>
       <Paragraph>
-        <b>Gültig ab:</b> 30. Mai 2025
+        <b>Gültig ab:</b> 16. März 2026
         <br />
-        <b>Betreiber:</b> Nikolas Tsombanis –{" "}
-        <a href="mailto:weilsiedichlieben@posteo.de">
-          weilsiedichlieben@posteo.de
+        <b>Betreiber:</b> Andreas Kuhl –{" "}
+        <a href="mailto:andreas.kuhl@magenta.de">
+          andreas.kuhl@magenta.de
         </a>
       </Paragraph>
       <Title level={5}>1. Geltungsbereich</Title>
@@ -192,11 +157,11 @@ const termsContent = {
   en: (
     <div style={{ maxHeight: "300px", overflow: "auto" }}>
       <Paragraph>
-        <b>Valid from:</b> May 30, 2025
+        <b>Valid from:</b> March 16, 2026
         <br />
-        <b>Operator:</b> Nikolas Tsombanis –{" "}
-        <a href="mailto:weilsiedichlieben@posteo.de">
-          weilsiedichlieben@posteo.de
+        <b>Operator:</b> Andreas Kuhl –{" "}
+        <a href="mailto:andreas.kuhl@magenta.de">
+          andreas.kuhl@magenta.de
         </a>
       </Paragraph>
       <Title level={5}>1. Scope</Title>

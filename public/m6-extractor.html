@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>M6-Fahrzeug-Extractor</title>
+  <style>
+    body { font-family: Roboto, Arial, sans-serif; background: #222; color: #fff; padding: 2em; }
+    textarea { width: 100%; height: 200px; margin-bottom: 1em; }
+    button { padding: 0.5em 1em; font-size: 1em; }
+    .result { background: #111; padding: 1em; border-radius: 8px; margin-top: 1em; }
+    .fahrzeug { margin-bottom: 0.5em; }
+  </style>
+</head>
+<body>
+  <h1>M6-Fahrzeug-Extractor</h1>
+  <p>Füge unten den JSON-Text aus der BVG-Radar-API ein und klicke auf "Filtern".</p>
+  <textarea id="jsonInput" placeholder="Hier JSON einfügen..."></textarea>
+  <br>
+  <button onclick="filterM6()">Filtern</button>
+  <div class="result" id="output"></div>
+  <script>
+    function cleanDisplayName(value) {
+      return String(value || '').replace(/\s*\(Berlin\)\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+    }
+
+    function filterM6() {
+      const input = document.getElementById('jsonInput').value;
+      let data;
+      try {
+        data = JSON.parse(input);
+      } catch (e) {
+        document.getElementById('output').innerHTML = '<span style="color:red">Ungültiges JSON!</span>';
+        return;
+      }
+      const m6 = Array.isArray(data) ? data.filter(f => f.line && f.line.name === "M6") : [];
+      if (m6.length === 0) {
+        document.getElementById('output').innerHTML = '<span style="color:orange">Keine Fahrzeuge der M6 gefunden.</span>';
+        return;
+      }
+      document.getElementById('output').innerHTML = m6.map((f, i) =>
+        `<div class='fahrzeug'>#${i+1}: Linie: <b>${f.line.name}</b>, Richtung: <b>${cleanDisplayName(f.direction) || '?'}</b>, Position: <b>${f.location?.latitude}, ${f.location?.longitude}</b>, Fahrzeug-ID: <b>${f.id}</b></div>`
+      ).join('');
+    }
+  </script>
+</body>
+</html>

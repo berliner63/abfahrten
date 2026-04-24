@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080, initial-scale=1.0">
+<link rel="stylesheet" href="echo.css">
+<title>Dashboard</title>
+
+<style>
+body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+/* Datum + Uhrzeit */
+#header {
+    margin-top: 20px;
+    font-size: 54px;
+    font-weight: 600;
+}
+
+/* Mini‑Ticker (hält Silk wach) */
+#ticker {
+    font-size: 10px;
+    opacity: 0.4;
+    margin-top: 5px;
+    line-height: 1.2;
+    height: 14px;
+}
+
+/* Iframe‑Container */
+.frame-wrapper {
+    margin-top: 40px;
+    width: 950px;
+    margin-left: auto;
+    margin-right: auto;
+}
+</style>
+
+<!-- Automatischer Reload alle 10 Minuten -->
+<script>
+setTimeout(() => {
+    location.reload();
+}, 10 * 60 * 1000);
+</script>
+
+<!-- Wake Lock: Bildschirm wach halten -->
+<script>
+let wakeLock = null;
+
+async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+            setTimeout(requestWakeLock, 1000);
+        });
+    } catch (err) {
+        console.warn('Wake Lock fehlgeschlagen:', err);
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        requestWakeLock();
+    }
+});
+
+requestWakeLock();
+</script>
+
+</head>
+
+<body>
+
+<!-- Datum + Uhrzeit -->
+<div id="header"></div>
+
+<script>
+function updateHeader() {
+    const now = new Date();
+
+    const date = now.toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    });
+
+    const weekday = now.toLocaleDateString("de-DE", {
+        weekday: "long"
+    });
+
+    const time = now.toLocaleTimeString("de-DE", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    });
+
+    document.getElementById("header").textContent =
+        `${date} – ${weekday} – ${time}`;
+}
+setInterval(updateHeader, 1000);
+updateHeader();
+</script>
+
+<!-- Mini‑Ticker (1 Punkt pro Sekunde, Reset nach 60) -->
+<div id="ticker">•</div>
+
+<script>
+let count = 1;
+
+setInterval(() => {
+    count = (count % 60) + 1;
+    document.getElementById("ticker").textContent = "•".repeat(count);
+}, 1000);
+</script>
+
+<!-- Wetterlabs Widget -->
+<div id="id0990fc7fa08c7" a='{"t":"g7bs","v":"1.2","lang":"de","locs":[1625],"ssot":"c","sics":"ds","cbkg":"#000000","cfnt":"#FFFFFF","cend":"#FFFFFF00","slfs":30,"slis":60}'>Wetterdatenquelle: <a href="https://wetterlabs.de/wetter_berlin/">https://wetterlabs.de/wetter_berlin/</a></div><script async src="https://static1.wetterlabs.de/widgetjs/?id=id0990fc7fa08c7"></script>
+
+<!-- Google Kalender (950×700) -->
+<div class="frame-wrapper">
+<iframe 
+    class="invert" src="https://calendar.google.com/calendar/embed?height=500&wkst=2&ctz=Europe%2FBerlin&showPrint=0&showNav=0&showDate=0&showCalendars=0&showTabs=0&showTz=0&mode=AGENDA&textsize=large&src=OHB2b2JqZXVpZ2VjZTY4N2xhdDZqZWxjMmtAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ&color=%23ef6c00"
+    style="border:solid 1px #777;"
+    width="950" height="700" frameborder="0" scrolling="no">
+</iframe>
+</div>
+
+<!-- kurz.php (950×700) -->
+<div class="frame-wrapper">
+<iframe 
+    class="kurz-frame" src="https://www.mad-doc.eu/dienste/andreas/kurz.php"
+    style="border:solid 1px #777;"
+    width="950" height="700" frameborder="0" scrolling="no">
+</iframe>
+</div>
+
+<!-- BVG Abfahrten Stendaler Str. → Betriebshof Marzahn -->
+<div class="frame-wrapper">
+<iframe
+    src="https://berliner63.github.io/abfahrten/stqu.html"
+    style="border:solid 1px #777;"
+    width="950" height="220" frameborder="0" scrolling="no">
+</iframe>
+</div>
+
+<!-- MP3 Loop -->
+<audio autoplay loop>
+    <source src="loop.mp3" type="audio/mpeg">
+</audio>
+
+<!-- MP4 Loop (zusätzlich, wie gewünscht) -->
+<video autoplay muted loop playsinline
+       style="position: absolute; width: 1px; height: 1px; opacity: 0;">
+    <source src="loop.mp4" type="video/mp4">
+</video>
+
+</body>
+</html>

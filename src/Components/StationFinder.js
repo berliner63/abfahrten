@@ -2,6 +2,7 @@
 import { AutoComplete, message } from "antd";
 import React, { useDeferredValue, useEffect, useState } from "react";
 import { getTranslation } from "../dictionary";
+import { sanitizeDisplayText } from "../utils/displayText";
 
 const StationFinder = (props) => {
   const [messageApi, contextHolder] = message.useMessage();
@@ -34,7 +35,7 @@ const StationFinder = (props) => {
     setOptions(
       data.map((dataSet) => {
         return {
-          value: dataSet.name,
+          value: sanitizeDisplayText(dataSet.name),
           id: dataSet.id,
           when: 0,
           results: 4,
@@ -56,7 +57,7 @@ const StationFinder = (props) => {
       <AutoComplete
         placeholder={getTranslation(props.language, "searchStation")}
         allowClear={props.allowClear}
-        value={value || props.initialValue || ""}
+        value={value || sanitizeDisplayText(props.initialValue || "")}
         style={{ width: 200 }}
         options={deferredOptions}
         onSelect={(_, option) => {

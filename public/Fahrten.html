@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fahrten</title>
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="shortcut icon" href="./logo.png">
+  <link rel="apple-touch-icon" href="./logo.png">
+  <meta name="apple-mobile-web-app-title" content="Fahrten">
+  <meta name="application-name" content="Fahrten">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body { font-family: 'Roboto Condensed', sans-serif; background: #000; color: #fff; margin: 0; padding: 0 8px; }
+    .header-row {
+      width: 100%;
+      max-width: 720px;
+      margin: 24px auto 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .toggle-controls {
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 16px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    .toggle-controls:hover { background: #1b1b1b; }
+    .controls { width: 100%; max-width: 720px; margin: 16px auto 0 auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .controls input, .controls select, .controls button {
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 18px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 8px 10px;
+    }
+    .controls input { flex: 1 1 260px; }
+    .controls select { flex: 2 1 360px; }
+    .controls button { cursor: pointer; }
+    .controls button:hover { background: #1b1b1b; }
+    table { border-collapse: collapse; table-layout: fixed; width: 100%; max-width: 720px; margin: 24px auto; background: #000; }
+    th, td { border: 1px solid #333; padding: 12px 8px; text-align: left; color: #fff; }
+    th { background: #111; }
+    tr:nth-child(even) { background: #0d0d0d; }
+    h1 { margin: 0; }
+    .abweichung-zu-frueh { color: #d32f2f; font-weight: bold; }
+    .abweichung-zu-spaet { color: #fbc02d; font-weight: bold; }
+    .abweichung-puenktlich { color: #388e3c; font-weight: bold; }
+    .page-note {
+      width: 100%;
+      max-width: 720px;
+      margin: 14px auto 20px auto;
+      padding: 0 8px;
+      color: #a0a0a0;
+      font-size: 14px;
+      text-align: left;
+    }
+    .data-status {
+      width: 100%;
+      max-width: 720px;
+      margin: 10px auto 0 auto;
+      padding: 8px 10px;
+      border: 1px solid #333;
+      background: #0d0d0d;
+      color: #e0e0e0;
+      font-size: 14px;
+    }
+    .data-status.live { color: #8bc34a; border-color: #2e7d32; }
+    .data-status.fallback { color: #ffd54f; border-color: #f9a825; }
+    .data-status.cache { color: #ffb74d; border-color: #ef6c00; }
+    .data-status.error { color: #ef9a9a; border-color: #c62828; }
+    .page-note a { color: #a0a0a0; cursor: pointer; text-decoration: underline; }
+    .page-note a:hover { color: #ccc; }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 40px;
+    }
+    .modal-overlay.visible {
+      display: flex;
+    }
+    .modal-content {
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 4px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .modal-header {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-close-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-close-btn:hover {
+      color: #aaa;
+    }
+    .modal-content h5 {
+      font-size: 14px;
+      font-weight: bold;
+      margin: 12px 0 8px 0;
+      color: #e0e0e0;
+    }
+    .modal-content p {
+      font-size: 13px;
+      margin: 8px 0;
+      line-height: 1.5;
+      color: #ccc;
+    }
+    .modal-content a {
+      color: #64b5f6;
+      text-decoration: none;
+    }
+    .modal-content a:hover {
+      text-decoration: underline;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 1024px), (pointer: coarse) {
+      body {
+        font-size: 18px;
+      }
+
+      .header-row,
+      .controls,
+      table {
+        width: calc(100% - 16px);
+        max-width: none;
+      }
+
+      .header-row {
+        margin-top: 12px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      h1 {
+        font-size: clamp(24px, 6.4vw, 32px);
+        line-height: 1.1;
+      }
+
+      .toggle-controls {
+        width: 100%;
+        font-size: 17px;
+        padding: 10px 12px;
+      }
+
+      .controls {
+        margin-top: 10px;
+        gap: 10px;
+      }
+
+      .controls input,
+      .controls select,
+      .controls button {
+        font-size: 18px;
+        padding: 10px 12px;
+      }
+
+      .controls input,
+      .controls select,
+      .controls button {
+        flex: 1 1 100%;
+      }
+
+      table {
+        margin-top: 20px;
+      }
+
+      th,
+      td {
+        font-size: 17px;
+        padding: 10px 8px;
+      }
+
+      th:nth-child(1),
+      td:nth-child(1) { width: 14%; }
+      th:nth-child(2),
+      td:nth-child(2) { width: 50%; word-break: break-word; }
+      th:nth-child(3),
+      td:nth-child(3) { width: 20%; }
+      th:nth-child(4),
+      td:nth-child(4) { width: 16%; }
+
+      .page-note {
+        width: calc(100% - 16px);
+        max-width: none;
+        font-size: 15px;
+      }
+
+      .data-status {
+        width: calc(100% - 16px);
+        max-width: none;
+        font-size: 14px;
+      }
+
+      th:nth-child(3),
+      td:nth-child(3),
+      th:nth-child(4),
+      td:nth-child(4) {
+        white-space: nowrap;
+      }
+
+      th:nth-child(4),
+      td:nth-child(4) {
+        text-align: right;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header-row">
+    <h1 id="pageTitle">U Hellersdorf</h1>
+    <button id="toggleControlsButton" class="toggle-controls" type="button">Suche ausblenden</button>
+  </div>
+  <div class="controls" id="searchControls">
+    <input id="stopQuery" type="text" value="" placeholder="Haltestelle suchen">
+    <button id="searchButton" type="button">Suchen</button>
+    <select id="stopSelect" aria-label="Gefundene Haltestellen"></select>
+    <button id="applyStopButton" type="button">Übernehmen</button>
+  </div>
+  <div class="data-status" id="dataStatus">Status: wird initialisiert ...</div>
+  <div id="loader" style="text-align:center;margin:40px;">
+    <span style="display:inline-block;width:40px;height:40px;border:4px solid #444;border-top:4px solid #fff;border-radius:50%;animation:spin 1s linear infinite;"></span>
+    <div style="margin-top:10px;color:#fff;">Lade Abfahrten...</div>
+  </div>
+  <table style="display:none;" id="departuresTable">
+    <thead>
+      <tr>
+        <th>Linie</th>
+        <th>Ziel</th>
+        <th>Soll</th>
+        <th>Ist</th>
+      </tr>
+    </thead>
+    <tbody id="departures">
+      <!-- Dynamische Daten werden hier eingefügt -->
+    </tbody>
+  </table>
+  <div class="page-note" id="pageNote">Stand: wird geladen ...</div>
+  
+  <div class="modal-overlay" id="impressumModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>Impressum</span>
+        <button class="modal-close-btn" onclick="closeImpressum()">&times;</button>
+      </div>
+      <p><b>Verantwortlich für diese Website:</b><br>Andreas Kuhl<br>E-Mail: <a href="mailto:andreas.kuhl@magenta.de">andreas.kuhl@magenta.de</a></p>
+      <h5>1. Bereitstellung der Daten</h5>
+      <p><a href="https://transport.rest" target="_blank">transport.rest transit APIs</a><br>Danke <a href="https://github.com/derhuerst" target="_blank">Jannis</a> für das Betreiben und Bereitstellen der tollen API! Schaut doch mal bei transport.rest vorbei!</p>
+      <h5>2. Allgemeines</h5>
+      <p>Diese Website ist ein privates Projekt und wird nicht von der BVG betrieben. Der Schutz Ihrer persönlichen Daten ist mir ein besonderes Anliegen. Ich verarbeite Ihre Daten daher ausschließlich auf Grundlage der gesetzlichen Bestimmungen (DSGVO, TMG).</p>
+      <h5>3. Erhebung und Speicherung personenbezogener Daten</h5>
+      <p>Beim Besuch dieser Website werden folgende Daten automatisch erfasst:<br>- IP-Adresse<br>- Datum und Uhrzeit des Zugriffs<br>- Besuchte Seiten<br>- Referrer-URL (Website, von der Sie kommen)<br>- Browsertyp/-version<br>- Betriebssystem</p>
+      <p>Diese Daten werden für die Systemsicherheit, zur Fehlerdiagnose und für statistische Zwecke verwendet. Eine Zusammenführung mit anderen Datenquellen erfolgt nicht.</p>
+      <h5>4. Verwendung von Cookies</h5>
+      <p>Diese Website verwendet Cookies. Cookies sind kleine Textdateien, die auf Ihrem Endgerät gespeichert werden. Sie dienen der nutzerfreundlichen Gestaltung der Website.</p>
+      <p>Sie können die Verwendung von Cookies über Ihre Browsereinstellungen einschränken oder verhindern. Die Deaktivierung von Cookies kann jedoch die Funktionalität der Website beeinträchtigen.</p>
+      <h5>5. Kontakt zum Datenschutz</h5>
+      <p>Bei Fragen zur Erhebung, Verarbeitung oder Nutzung Ihrer personenbezogenen Daten wenden Sie sich bitte an:<br><b>Andreas Kuhl</b> – <a href="mailto:andreas.kuhl@magenta.de">andreas.kuhl@magenta.de</a></p>
+      <h5>6. Haftung</h5>
+      <p>Der Betreiber haftet nicht für etwaige Schäden, die durch die Nutzung dieser Website entstehen, es sei denn, sie beruhen auf Vorsatz oder grober Fahrlässigkeit.</p>
+      <h5>7. Extern Links</h5>
+      <p>Diese Website kann Links zu externen Websites enthalten. Für deren Inhalte wird keine Verantwortung übernommen.</p>
+      <h5>8. Gerichtsstand und anwendbares Recht</h5>
+      <p>Es gilt deutsches Recht. Gerichtsstand ist Berlin.</p>
+    </div>
+  </div>
+  
+  <script>
+    function openImpressum() {
+      document.getElementById('impressumModal').classList.add('visible');
+    }
+    
+    function closeImpressum() {
+      document.getElementById('impressumModal').classList.remove('visible');
+    }
+    
+    document.getElementById('impressumModal').addEventListener('click', (e) => {
+      if (e.target.id === 'impressumModal') {
+        closeImpressum();
+      }
+    });
+  </script>
+  <script>
+    const PAGE_VERSION = 'v2026-03-18-02';
+    const PAGE_CHANGED_AT_FALLBACK = '2026-03-18T23:10:00+01:00';
+    const API_BASES = [
+      'https://v6.bvg.transport.rest',
+      'https://v6.vbb.transport.rest',
+      'https://v6.db.transport.rest'
+    ];
+    const REQUEST_TIMEOUT_MS = 9000;
+    const MAX_RETRIES_PER_ENDPOINT = 1;
+    const CACHE_PREFIX = 'fahrten-cache-v1:';
+    const DEFAULT_STOP_ID = '900175007';
+    const DEFAULT_STOP_NAME = 'U Hellersdorf';
+    let selectedStopId = DEFAULT_STOP_ID;
+    let selectedStopName = DEFAULT_STOP_NAME;
+
+    function cleanDisplayName(value) {
+      return String(value || '').replace(/\s*\(Berlin\)\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+    }
+
+    function setDataStatus(text, mode) {
+      const el = document.getElementById('dataStatus');
+      el.textContent = text;
+      el.className = 'data-status';
+      if (mode) el.classList.add(mode);
+    }
+
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function getCacheKey(stopId) {
+      return `${CACHE_PREFIX}${stopId}`;
+    }
+
+    function saveDeparturesToCache(stopId, stopName, departures, sourceBase) {
+      try {
+        const payload = {
+          stopId,
+          stopName,
+          sourceBase,
+          savedAt: new Date().toISOString(),
+          departures
+        };
+        localStorage.setItem(getCacheKey(stopId), JSON.stringify(payload));
+      } catch (e) {
+        // Ignore cache write errors (quota/private mode).
+      }
+    }
+
+    function loadDeparturesFromCache(stopId) {
+      try {
+        const raw = localStorage.getItem(getCacheKey(stopId));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.departures)) return null;
+        return parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function formatBerlinTimestamp(date) {
+      const formatted = new Intl.DateTimeFormat('de-DE', {
+        timeZone: 'Europe/Berlin',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(date);
+
+      return `${formatted} ${getBerlinZoneLabel(date)}`;
+    }
+
+    function normalizeDepartures(data) {
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.departures)) return data.departures;
+      return [];
+    }
+
+    async function fetchJsonWithTimeout(url, timeoutMs) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function requestAcrossEndpoints(path) {
+      const errors = [];
+
+      for (let i = 0; i < API_BASES.length; i++) {
+        const base = API_BASES[i];
+        const url = `${base}${path}`;
+        let lastError = null;
+
+        for (let attempt = 0; attempt <= MAX_RETRIES_PER_ENDPOINT; attempt++) {
+          try {
+            const data = await fetchJsonWithTimeout(url, REQUEST_TIMEOUT_MS);
+            return {
+              data,
+              base,
+              usedFallback: i > 0,
+              endpointIndex: i,
+              attempt: attempt + 1
+            };
+          } catch (error) {
+            lastError = error;
+            if (attempt < MAX_RETRIES_PER_ENDPOINT) {
+              await sleep(350 * (attempt + 1));
+            }
+          }
+        }
+
+        errors.push(`${base}: ${lastError ? lastError.message : 'unknown error'}`);
+      }
+
+      throw new Error(errors.join(' | '));
+    }
+
+    function getBerlinZoneLabel(date) {
+      try {
+        const zonePart = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Berlin',
+          timeZoneName: 'shortOffset',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+          .formatToParts(date)
+          .find((part) => part.type === 'timeZoneName');
+
+        const offset = zonePart ? zonePart.value : '';
+        if (offset.includes('+2')) return 'MESZ';
+        if (offset.includes('+1')) return 'MEZ';
+      } catch (e) {
+        return 'MEZ/MESZ';
+      }
+
+      return 'MEZ/MESZ';
+    }
+
+    function updatePageNote() {
+      const parsedLastModified = document.lastModified ? new Date(document.lastModified) : null;
+      const fallbackDate = new Date(PAGE_CHANGED_AT_FALLBACK);
+      const sourceDate = parsedLastModified && !Number.isNaN(parsedLastModified.getTime()) ? parsedLastModified : fallbackDate;
+      const pageNoteEl = document.getElementById('pageNote');
+      pageNoteEl.innerHTML = `<a onclick="openImpressum()" style="cursor: pointer;">Impressum</a> | Letzte Aenderung: ${formatBerlinTimestamp(sourceDate)} (${PAGE_VERSION})`;
+    }
+
+    function updateTitle() {
+      document.getElementById('pageTitle').textContent = cleanDisplayName(selectedStopName);
+    }
+
+    function updateUrl(stopId, stopName) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('stopId', stopId);
+      url.searchParams.set('stopName', cleanDisplayName(stopName));
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    function readStopFromUrl() {
+      const url = new URL(window.location.href);
+      const stopId = url.searchParams.get('stopId');
+      const stopName = url.searchParams.get('stopName');
+      if (stopId) {
+        selectedStopId = stopId;
+      }
+      if (stopName) {
+        selectedStopName = cleanDisplayName(stopName);
+      }
+    }
+
+    function fillStopSelect(stops) {
+      const select = document.getElementById('stopSelect');
+      select.innerHTML = '';
+      stops.forEach((stop, index) => {
+        const option = document.createElement('option');
+        option.value = stop.id;
+        option.textContent = cleanDisplayName(stop.name);
+        option.dataset.name = cleanDisplayName(stop.name);
+        if (index === 0) option.selected = true;
+        select.appendChild(option);
+      });
+    }
+
+    async function searchStops(query) {
+      try {
+        const result = await requestAcrossEndpoints(`/locations?query=${encodeURIComponent(query)}`);
+        const data = result.data;
+        if (!Array.isArray(data)) return [];
+        return data.filter((item) => (item.type === 'stop' || item.type === 'station') && item.id && item.name);
+      } catch (e) {
+        return [];
+      }
+    }
+
+    async function getStopById(stopId) {
+      try {
+        const result = await requestAcrossEndpoints(`/stops/${encodeURIComponent(stopId)}`);
+        const data = result.data;
+        if (data && data.id && data.name) {
+          return { id: data.id, name: cleanDisplayName(data.name), type: data.type || 'stop' };
+        }
+      } catch (e) {
+        return null;
+      }
+      return null;
+    }
+
+    async function getDepartures(stopId) {
+      return await requestAcrossEndpoints(`/stops/${encodeURIComponent(stopId)}/departures?duration=30`);
+    }
+
+    function formatTime(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function loadDepartures() {
+      const loader = document.getElementById('loader');
+      const table = document.getElementById('departuresTable');
+      setDataStatus('Status: Lade Live-Daten ...', null);
+      loader.style.display = 'block';
+      table.style.display = 'none';
+      const tbody = document.getElementById('departures');
+      tbody.innerHTML = '';
+      if (!selectedStopId) {
+        loader.style.display = 'none';
+        table.style.display = 'block';
+        tbody.innerHTML = '<tr><td colspan="4">Haltestellen-ID nicht gefunden oder API nicht erreichbar</td></tr>';
+        setDataStatus('Status: Keine gueltige Haltestelle gewaehlt.', 'error');
+        return;
+      }
+      updateTitle();
+      try {
+        const departureResult = await getDepartures(selectedStopId);
+        loader.style.display = 'none';
+        table.style.display = 'block';
+        const depList = normalizeDepartures(departureResult.data);
+
+        if (!depList || depList.length === 0) {
+          const cached = loadDeparturesFromCache(selectedStopId);
+          if (cached && cached.departures.length > 0) {
+            renderRows(cached.departures);
+            setDataStatus(`Status: Cache-Daten vom ${formatBerlinTimestamp(new Date(cached.savedAt))}.`, 'cache');
+            return;
+          }
+          tbody.innerHTML = '<tr><td colspan="4">Keine Abfahrten gefunden.</td></tr>';
+          setDataStatus(`Status: Live ohne Treffer (${departureResult.base}).`, departureResult.usedFallback ? 'fallback' : 'live');
+          return;
+        }
+
+        const rows = depList.slice(0, 11);
+        renderRows(rows);
+        saveDeparturesToCache(selectedStopId, selectedStopName, rows, departureResult.base);
+        if (departureResult.usedFallback) {
+          setDataStatus(`Status: Live-Daten von ${departureResult.base} (Fallback aktiv).`, 'fallback');
+        } else {
+          setDataStatus(`Status: Live-Daten von ${departureResult.base}.`, 'live');
+        }
+      } catch (error) {
+        loader.style.display = 'none';
+        table.style.display = 'block';
+        const cached = loadDeparturesFromCache(selectedStopId);
+        if (cached && cached.departures.length > 0) {
+          renderRows(cached.departures);
+          setDataStatus(`Status: API-Ausfall, Cache-Daten vom ${formatBerlinTimestamp(new Date(cached.savedAt))}.`, 'cache');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="4">API momentan nicht erreichbar und kein Cache vorhanden.</td></tr>';
+          setDataStatus('Status: Live-Daten nicht verfuegbar (kein Cache).', 'error');
+        }
+      }
+    }
+
+    function renderRows(depList) {
+      const tbody = document.getElementById('departures');
+      tbody.innerHTML = '';
+      depList.slice(0, 11).forEach(dep => {
+        // Ist-Zeit und Klasse berechnen
+        let planned = dep.plannedWhen ? new Date(dep.plannedWhen) : null;
+        let actual = dep.when ? new Date(dep.when) : null;
+        let istText = actual ? formatTime(dep.when) : (planned ? formatTime(dep.plannedWhen) : '');
+        let istClass = '';
+        if (planned && actual) {
+          const diff = Math.round((actual - planned) / 60000);
+          if (diff < 0) {
+            istClass = 'abweichung-zu-frueh';
+          } else if (diff > 0) {
+            istClass = 'abweichung-zu-spaet';
+          } else {
+            istClass = 'abweichung-puenktlich';
+          }
+        }
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${dep.line && dep.line.name ? dep.line.name : ''}</td>
+          <td>${cleanDisplayName(dep.direction || '').replace(/->/g, '>')}</td>
+          <td>${dep.plannedWhen ? formatTime(dep.plannedWhen) : ''}</td>
+          <td><span class="${istClass}">${istText}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function onSearchStops() {
+      const query = document.getElementById('stopQuery').value.trim();
+      if (!query) return;
+
+      // Bei numerischer Eingabe zuerst als direkte Haltestellen-ID auflösen.
+      if (/^\d+$/.test(query)) {
+        const stopById = await getStopById(query);
+        if (stopById) {
+          fillStopSelect([stopById]);
+          return;
+        }
+      }
+
+      const stops = await searchStops(query);
+      if (stops.length === 0) {
+        const select = document.getElementById('stopSelect');
+        select.innerHTML = '';
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Keine Haltestellen gefunden';
+        select.appendChild(option);
+        return;
+      }
+      fillStopSelect(stops);
+    }
+
+    function onApplySelectedStop() {
+      const select = document.getElementById('stopSelect');
+      const option = select.options[select.selectedIndex];
+      if (!option || !option.value) return;
+      selectedStopId = option.value;
+      selectedStopName = cleanDisplayName(option.dataset.name || option.textContent);
+      updateUrl(selectedStopId, selectedStopName);
+      document.getElementById('stopQuery').value = '';
+      const controls = document.getElementById('searchControls');
+      const toggleButton = document.getElementById('toggleControlsButton');
+      controls.style.display = 'none';
+      toggleButton.textContent = 'Suche einblenden';
+      loadDepartures();
+    }
+
+    function toggleSearchControls() {
+      const controls = document.getElementById('searchControls');
+      const button = document.getElementById('toggleControlsButton');
+      const isHidden = controls.style.display === 'none';
+      controls.style.display = isHidden ? 'flex' : 'none';
+      button.textContent = isHidden ? 'Suche ausblenden' : 'Suche einblenden';
+    }
+
+    document.getElementById('searchButton').addEventListener('click', onSearchStops);
+    document.getElementById('applyStopButton').addEventListener('click', onApplySelectedStop);
+    document.getElementById('toggleControlsButton').addEventListener('click', toggleSearchControls);
+    document.getElementById('stopQuery').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        onSearchStops();
+      }
+    });
+
+    readStopFromUrl();
+    document.getElementById('searchControls').style.display = 'none';
+    document.getElementById('toggleControlsButton').textContent = 'Suche einblenden';
+    document.getElementById('stopQuery').value = '';
+    fillStopSelect([{ id: selectedStopId, name: cleanDisplayName(selectedStopName) }]);
+    updatePageNote();
+    loadDepartures();
+    setInterval(loadDepartures, 60000);
+  </script>
+</body>
+</html>

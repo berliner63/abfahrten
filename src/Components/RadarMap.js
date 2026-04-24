@@ -6,6 +6,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { getTranslation } from "../dictionary";
+import { sanitizeDisplayText } from "../utils/displayText";
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -26,7 +27,7 @@ const getContainerStyle = (isMobile) => ({
   justifyContent: "center",
   alignItems: "center",
   backgroundColor: "lightGray",
-  fontFamily: "DotMatrix",
+  fontFamily: "Roboto Condensed",
   color: "black",
 });
 
@@ -135,7 +136,7 @@ const RadarMap = ({ stopLocation, dataSource = [], language = "de", isMobile = f
           offset={[10, 0]}
           className="vehicle-tooltip"
         >
-          {`${v.line.name} (${v.direction})`}
+          {`${v.line.name} (${sanitizeDisplayText(v.direction)})`}
         </Tooltip>
       </Marker>
     );

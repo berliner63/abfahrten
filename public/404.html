@@ -1,0 +1,29 @@
+<!--
+  404.html for GitHub Pages React Router SPA support
+  This file ensures that all unknown routes are redirected to index.html,
+  allowing React Router to handle client-side routing (e.g., /m6).
+-->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>404: Not Found</title>
+    <meta http-equiv="refresh" content="0; url=/abfahrten/" />
+    <script type="text/javascript">
+      // GitHub Pages SPA redirect workaround
+      // Redirects to index.html and preserves the path for React Router
+      (function() {
+        var l = window.location;
+        var path = l.pathname.replace(/^\/abfahrten/, "");
+        var search = l.search || "";
+        var hash = l.hash || "";
+        var newUrl = "/abfahrten/" + (path ? path.replace(/^\//, "") : "") + search + hash;
+        window.location.replace(newUrl);
+      })();
+    </script>
+  </head>
+  <body>
+    <h1>404: Not Found</h1>
+    <p>Redirecting to the application...</p>
+  </body>
+</html>

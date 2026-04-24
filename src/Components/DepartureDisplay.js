@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState, useRef } from "react";
 import DepartureTable from "./DepartureTable";
+import { sanitizeDisplayText } from "../utils/displayText";
 
 const DepartureDisplay = (props) => {
   const [columnData, setColumnData] = useState([]);
@@ -48,14 +49,14 @@ const DepartureDisplay = (props) => {
       const departure = {
         stop: {
           id: firstLeg.origin.id,
-          name: firstLeg.origin.name,
+          name: sanitizeDisplayText(firstLeg.origin.name),
           location: firstLeg.origin.location,
         },
         line: {
           name: firstLeg.line.name,
         },
         tripId: firstLeg.tripId || firstLeg.trip?.id,
-        direction: firstLeg.direction,
+        direction: sanitizeDisplayText(firstLeg.direction),
         when: firstLeg.departure,
         remarks: firstLeg.remarks,
       };
@@ -109,7 +110,12 @@ const DepartureDisplay = (props) => {
         url = `https://v6.bvg.transport.rest/journeys?language=${props.language}&from=${stationId}&to=${destination.id}&departure=${formattedTime}&results=${results}&suburban=${suburban}&subway=${subway}&tram=${tram}&bus=${bus}&ferry=${ferry}&express=${express}&regional=${regional}&remarks=${props.standardRemarksVisibility}`;
         response = await fetch(url);
         const data = await response.json();
-        handleFetchResponse(convertJourneyResultToDepartureData(data.journeys));
+        // Gib immer ein Objekt mit departures-Array zurück
+        if (data && Array.isArray(data.journeys)) {
+          handleFetchResponse(convertJourneyResultToDepartureData(data.journeys));
+        } else {
+          handleFetchResponse({ departures: [] });
+        }
       } else {
         url = `https://v6.bvg.transport.rest/stops/${stationId}/departures?language=${props.language}&when=${formattedTime}&results=${results}&suburban=${suburban}&subway=${subway}&tram=${tram}&bus=${bus}&ferry=${ferry}&express=${express}&regional=${regional}&remarks=${props.standardRemarksVisibility}`;
         response = await fetch(url);
@@ -138,8 +144,8 @@ const DepartureDisplay = (props) => {
         columnData.push({
           key: `${i}_${departure.stop.id}_${j}`,
           lineName: departure.line.name,
-          direction: departure.direction,
-          departureName: departure.stop.name,
+          direction: sanitizeDisplayText(departure.direction),
+          departureName: sanitizeDisplayText(departure.stop.name),
           when: diffInMinutes,
           departureTime: departure.when, // Originalzeit als ISO-String
           remarks: departure.remarks,

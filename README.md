@@ -1,4 +1,6 @@
-![weilSieDichLieben Banner](./src/images/BVG.png)
+![weilSieDichLieben Banner](./src/images/logo.png)
+
+**Hinweis:** Dieses Projekt ist eine angepasste Version des Originals von [NikBLN](https://github.com/NikBLN/weilSieDichLieben). Die Anpassungen wurden von berliner63 vorgenommen. Das Original findest du hier: https://github.com/NikBLN/weilSieDichLieben
 
 # weilSieDichLieben
 

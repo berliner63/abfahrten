@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>KorridorMonitorMap</title>
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="shortcut icon" href="./logo.png">
+  <link rel="apple-touch-icon" href="./logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      padding: 0 8px 24px;
+      background: #000;
+      color: #fff;
+      font-family: 'Roboto Condensed', sans-serif;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 1220px;
+      margin: 18px auto;
+    }
+    .header-line {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+    .sub {
+      color: #aaa;
+      font-size: 14px;
+      margin: 0;
+    }
+    .panel {
+      border: 1px solid #333;
+      background: #0d0d0d;
+      padding: 10px;
+      margin-bottom: 14px;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    button {
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 14px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+    button:hover { background: #1b1b1b; }
+    .meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 14px;
+      color: #c2c2c2;
+      margin-top: 10px;
+      align-items: baseline;
+    }
+    #statusText,
+    #countsText {
+      font-size: 18px;
+    }
+    .ok { color: #8bc34a; }
+    .warn { color: #ffd54f; }
+    .err { color: #ef9a9a; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .map-panel,
+    .list-panel {
+      border: 1px solid #333;
+      background: #0d0d0d;
+      overflow: hidden;
+    }
+    #map {
+      width: 100%;
+      height: 74vh;
+      min-height: 540px;
+      background: #111;
+    }
+    .map-fallback {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #bbb;
+      font-size: 16px;
+      text-align: center;
+      min-height: 540px;
+      height: 74vh;
+      box-sizing: border-box;
+    }
+    .list-header {
+      padding: 10px 12px;
+      border-bottom: 1px solid #333;
+      font-size: 18px;
+      background: #111;
+    }
+    .list-note {
+      padding: 10px 12px 0 12px;
+      color: #9a9a9a;
+      font-size: 13px;
+    }
+    .vehicle-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: calc(74vh - 44px);
+      min-height: 540px;
+      overflow-y: auto;
+    }
+    .vehicle-item {
+      padding: 12px;
+      border-top: 1px solid #222;
+      display: grid;
+      gap: 4px;
+    }
+    .vehicle-item:nth-child(even) {
+      background: #090909;
+    }
+    .vehicle-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 7px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 999px;
+      border: 1px solid #333;
+      background: #111;
+    }
+    .badge.tram {
+      color: #111;
+      background: #ff0000;
+      border-color: #ff0000;
+    }
+    .badge.bus {
+      color: #fff;
+      background: #7b1fa2;
+      border-color: #7b1fa2;
+    }
+    .vehicle-destination {
+      color: #fff;
+      font-size: 16px;
+    }
+    .vehicle-meta {
+      color: #bbb;
+      font-size: 14px;
+    }
+    .vehicle-delay.late { color: #ffd54f; }
+    .vehicle-delay.early { color: #ff0000; }
+    .vehicle-delay.ontime { color: #8bc34a; }
+    .empty {
+      padding: 14px 12px;
+      color: #aaa;
+      font-size: 15px;
+    }
+    .note {
+      color: #9a9a9a;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    .note a { color: #a0a0a0; cursor: pointer; text-decoration: underline; }
+    .note a:hover { color: #ccc; }
+    .legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      color: #bbb;
+      font-size: 14px;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1001;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 40px;
+    }
+    .modal-overlay.visible {
+      display: flex;
+    }
+    .modal-content {
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 4px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+    .modal-header {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-close-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-close-btn:hover {
+      color: #aaa;
+      background: none;
+    }
+    .modal-content h5 {
+      font-size: 14px;
+      font-weight: bold;
+      margin: 12px 0 8px 0;
+      color: #e0e0e0;
+    }
+    .modal-content p {
+      font-size: 13px;
+      margin: 8px 0;
+      line-height: 1.5;
+      color: #ccc;
+    }
+    .modal-content a {
+      color: #64b5f6;
+      text-decoration: none;
+    }
+    .modal-content a:hover {
+      text-decoration: underline;
+    }
+    .corridor-stop-label {
+      color: #ddd;
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 12px;
+      text-shadow: 0 1px 1px rgba(0,0,0,0.9);
+      white-space: nowrap;
+    }
+    .vehicle-tooltip {
+      background: #111 !important;
+      color: #fff !important;
+      border: 1px solid #333 !important;
+      box-shadow: none !important;
+      font-family: 'Roboto Condensed', sans-serif !important;
+    }
+    @media (max-width: 1024px), (pointer: coarse) {
+      h1 { font-size: 24px; }
+      #statusText,
+      #countsText { font-size: 16px; }
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      #map,
+      .vehicle-list {
+        min-height: 420px;
+        height: 56vh;
+      }
+      .vehicle-line {
+        font-size: 17px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header-line">
+      <h1>KorridorMonitorMap</h1>
+      <div class="sub">Live-Karte für die Linien 18, M6, M8, 195 und X54 im Korridor Riesaer Straße bis Landsberger Allee/Rhinstraße.</div>
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <button id="refreshBtn" type="button">Jetzt aktualisieren</button>
+        <button id="toggleAutoBtn" type="button">Auto: an</button>
+      </div>
+      <div class="meta">
+        <div id="statusText">Status: wird geladen ...</div>
+        <div id="countsText">Fahrzeuge im Korridor: - | Tram: - | Bus: -</div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:#ff0000"></span>Tram</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:#7b1fa2"></span>Bus</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:#64b5f6"></span>Korridor</span>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="map-panel">
+        <div id="map"></div>
+      </div>
+
+      <div class="list-panel">
+        <div class="list-header">Fahrzeuge im Korridor</div>
+        <div class="list-note">Gefiltert auf die Linien 18, M6, M8, 195 und X54 sowie nach Streckennähe zur Korridorlinie.</div>
+        <ul class="vehicle-list" id="vehicleList">
+          <li class="empty">Lade Daten ...</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="sourceText" class="note">Quelle: - | <a onclick="openImpressum()">Impressum</a></div>
+
+    <div class="modal-overlay" id="impressumModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span>Impressum</span>
+          <button class="modal-close-btn" onclick="closeImpressum()">&times;</button>
+        </div>
+        <p><b>Verantwortlich für diese Website:</b><br>Andreas Kuhl<br>E-Mail: <a href="mailto:andreas.kuhl@magenta.de">andreas.kuhl@magenta.de</a></p>
+        <h5>1. Bereitstellung der Daten</h5>
+        <p><a href="https://transport.rest" target="_blank">transport.rest transit APIs</a><br>Danke <a href="https://github.com/derhuerst" target="_blank">Jannis</a> für das Betreiben und Bereitstellen der tollen API! Schaut doch mal bei transport.rest vorbei!</p>
+        <h5>2. Allgemeines</h5>
+        <p>Diese Website ist ein privates Projekt und wird nicht von der BVG betrieben. Der Schutz Ihrer persönlichen Daten ist mir ein besonderes Anliegen. Ich verarbeite Ihre Daten daher ausschließlich auf Grundlage der gesetzlichen Bestimmungen (DSGVO, TMG).</p>
+        <h5>3. Erhebung und Speicherung personenbezogener Daten</h5>
+        <p>Beim Besuch dieser Website werden folgende Daten automatisch erfasst:<br>- IP-Adresse<br>- Datum und Uhrzeit des Zugriffs<br>- Besuchte Seiten<br>- Referrer-URL (Website, von der Sie kommen)<br>- Browsertyp/-version<br>- Betriebssystem</p>
+        <p>Diese Daten werden für die Systemsicherheit, zur Fehlerdiagnose und für statistische Zwecke verwendet. Eine Zusammenführung mit anderen Datenquellen erfolgt nicht.</p>
+        <h5>4. Verwendung von Cookies</h5>
+        <p>Diese Website verwendet Cookies. Cookies sind kleine Textdateien, die auf Ihrem Endgerät gespeichert werden. Sie dienen der nutzerfreundlichen Gestaltung der Website.</p>
+        <p>Sie können die Verwendung von Cookies über Ihre Browsereinstellungen einschränken oder verhindern. Die Deaktivierung von Cookies kann jedoch die Funktionalität der Website beeinträchtigen.</p>
+        <h5>5. Kontakt zum Datenschutz</h5>
+        <p>Bei Fragen zur Erhebung, Verarbeitung oder Nutzung Ihrer personenbezogenen Daten wenden Sie sich bitte an:<br><b>Andreas Kuhl</b> – <a href="mailto:andreas.kuhl@magenta.de">andreas.kuhl@magenta.de</a></p>
+        <h5>6. Haftung</h5>
+        <p>Der Betreiber haftet nicht für etwaige Schäden, die durch die Nutzung dieser Website entstehen, es sei denn, sie beruhen auf Vorsatz oder grober Fahrlässigkeit.</p>
+        <h5>7. Extern Links</h5>
+        <p>Diese Website kann Links zu externen Websites enthalten. Für deren Inhalte wird keine Verantwortung übernommen.</p>
+        <h5>8. Gerichtsstand und anwendbares Recht</h5>
+        <p>Es gilt deutsches Recht. Gerichtsstand ist Berlin.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASES = [
+      'https://v6.bvg.transport.rest',
+      'https://v6.vbb.transport.rest',
+      'https://v6.db.transport.rest'
+    ];
+    const AUTO_REFRESH_MS = 60000;
+    const CORRIDOR_DISTANCE_METERS = 320;
+    const STOP_DISTANCE_METERS = 420;
+    const ALLOWED_LINES = new Set(['18', 'M6', 'M8', '195', 'X54']);
+    const CORRIDOR_POINTS = [
+      { name: 'Riesaer Str.', lat: 52.529401, lon: 13.624186 },
+      { name: 'U Louis-Lewin-Str.', lat: 52.539136, lon: 13.619709 },
+      { name: 'U Hellersdorf', lat: 52.536331, lon: 13.605327 },
+      { name: 'Stendaler Str./Quedlinburger Str.', lat: 52.538956, lon: 13.604518 },
+      { name: 'Alte Hellersdorfer/Zossener Str.', lat: 52.544835, lon: 13.592175 },
+      { name: 'Betriebshof Marzahn', lat: 52.549006, lon: 13.583717 },
+      { name: 'Allee der Kosmonauten/Rhinstraße', lat: 52.525499, lon: 13.519650 },
+      { name: 'Landsberger Allee/Rhinstraße', lat: 52.535657, lon: 13.517484 }
+    ];
+
+    let autoEnabled = true;
+    let autoTimer = null;
+    let map = null;
+    let corridorLine = null;
+    let markerLayer = null;
+    let stopLayer = null;
+    let appStarted = false;
+    function setMapFallbackMessage(text) {
+      const mapEl = document.getElementById('map');
+      if (!mapEl) return;
+      mapEl.innerHTML = '<div class="map-fallback">' + text + '</div>';
+    }
+
+
+    function openImpressum() {
+      document.getElementById('impressumModal').classList.add('visible');
+    }
+
+    function closeImpressum() {
+      document.getElementById('impressumModal').classList.remove('visible');
+    }
+
+    function setStatus(text, cls) {
+      const el = document.getElementById('statusText');
+      el.textContent = 'Status: ' + text;
+      el.className = cls || '';
+    }
+
+    function cleanDisplayName(value) {
+      return String(value || '-')
+        .replace(/\s*\(Berlin\)\s*/gi, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim() || '-';
+    }
+
+    function cleanStopName(value) {
+      return String(value || '-')
+        .replace(/\s*\[[^\]]*\]\s*/g, ' ')
+        .replace(/\s*\(Berlin\)\s*/gi, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim() || '-';
+    }
+
+    function formatTime(value) {
+      if (!value) return '-';
+      return new Date(value).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function getDelayInfo(stopover) {
+      if (!stopover) return null;
+
+      if (stopover.plannedDeparture && stopover.departure && typeof stopover.departureDelay === 'number') {
+        return {
+          planned: stopover.plannedDeparture,
+          actual: stopover.departure,
+          delayMinutes: Math.round(stopover.departureDelay / 60),
+          stopName: cleanStopName(stopover.stop && stopover.stop.name ? stopover.stop.name : '-'),
+          stopLocation: stopover.stop && stopover.stop.location ? stopover.stop.location : null
+        };
+      }
+
+      if (stopover.plannedArrival && stopover.arrival && typeof stopover.arrivalDelay === 'number') {
+        return {
+          planned: stopover.plannedArrival,
+          actual: stopover.arrival,
+          delayMinutes: Math.round(stopover.arrivalDelay / 60),
+          stopName: cleanStopName(stopover.stop && stopover.stop.name ? stopover.stop.name : '-'),
+          stopLocation: stopover.stop && stopover.stop.location ? stopover.stop.location : null
+        };
+      }
+
+      return null;
+    }
+
+    function pointToXY(lat, lon, refLat) {
+      const metersPerDegLat = 111320;
+      const metersPerDegLon = 111320 * Math.cos((refLat * Math.PI) / 180);
+      return {
+        x: lon * metersPerDegLon,
+        y: lat * metersPerDegLat
+      };
+    }
+
+    function distancePointToSegmentMeters(point, start, end) {
+      const refLat = (point.lat + start.lat + end.lat) / 3;
+      const p = pointToXY(point.lat, point.lon, refLat);
+      const a = pointToXY(start.lat, start.lon, refLat);
+      const b = pointToXY(end.lat, end.lon, refLat);
+      const abx = b.x - a.x;
+      const aby = b.y - a.y;
+      const ab2 = abx * abx + aby * aby;
+      if (!ab2) {
+        return { distance: Math.hypot(p.x - a.x, p.y - a.y), t: 0 };
+      }
+      let t = ((p.x - a.x) * abx + (p.y - a.y) * aby) / ab2;
+      t = Math.max(0, Math.min(1, t));
+      const closestX = a.x + abx * t;
+      const closestY = a.y + aby * t;
+      return { distance: Math.hypot(p.x - closestX, p.y - closestY), t };
+    }
+
+    function corridorMetrics(point) {
+      let bestDistance = Infinity;
+      let bestProgress = 0;
+      let traversedMeters = 0;
+
+      for (let i = 0; i < CORRIDOR_POINTS.length - 1; i += 1) {
+        const start = CORRIDOR_POINTS[i];
+        const end = CORRIDOR_POINTS[i + 1];
+        const refLat = (start.lat + end.lat) / 2;
+        const startXY = pointToXY(start.lat, start.lon, refLat);
+        const endXY = pointToXY(end.lat, end.lon, refLat);
+        const segmentLength = Math.hypot(endXY.x - startXY.x, endXY.y - startXY.y);
+        const metric = distancePointToSegmentMeters(point, start, end);
+        if (metric.distance < bestDistance) {
+          bestDistance = metric.distance;
+          bestProgress = traversedMeters + segmentLength * metric.t;
+        }
+        traversedMeters += segmentLength;
+      }
+
+      return {
+        distance: bestDistance,
+        progress: bestProgress
+      };
+    }
+
+    function isBusOrTram(movement) {
+      const line = movement && movement.line ? movement.line : null;
+      if (!line) return false;
+      const productName = String(line.productName || '').toLowerCase();
+      return line.product === 'tram' || line.product === 'bus' || productName === 'tram' || productName === 'bus';
+    }
+
+    function isAllowedLine(movement) {
+      const lineName = movement && movement.line && movement.line.name ? String(movement.line.name).trim().toUpperCase() : '';
+      return ALLOWED_LINES.has(lineName);
+    }
+
+    function getBoundingBox(points, marginLat, marginLon) {
+      let north = -Infinity;
+      let south = Infinity;
+      let east = -Infinity;
+      let west = Infinity;
+
+      points.forEach((point) => {
+        north = Math.max(north, point.lat);
+        south = Math.min(south, point.lat);
+        east = Math.max(east, point.lon);
+        west = Math.min(west, point.lon);
+      });
+
+      return {
+        north: north + marginLat,
+        south: south - marginLat,
+        east: east + marginLon,
+        west: west - marginLon
+      };
+    }
+
+    function initMap() {
+      if (!window.L) {
+        setMapFallbackMessage('Karte konnte nicht geladen werden. Die Fahrzeugliste wird trotzdem angezeigt.');
+        return;
+      }
+
+      map = L.map('map', { zoomControl: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      markerLayer = L.layerGroup().addTo(map);
+      stopLayer = L.layerGroup().addTo(map);
+
+      corridorLine = L.polyline(
+        CORRIDOR_POINTS.map((point) => [point.lat, point.lon]),
+        { color: '#64b5f6', weight: 4, opacity: 0.85 }
+      ).addTo(map);
+
+      CORRIDOR_POINTS.forEach((point) => {
+        L.circleMarker([point.lat, point.lon], {
+          radius: 5,
+          color: '#64b5f6',
+          weight: 2,
+          fillColor: '#64b5f6',
+          fillOpacity: 0.9
+        })
+          .bindTooltip(point.name, { permanent: false, direction: 'top', className: 'vehicle-tooltip' })
+          .addTo(stopLayer);
+      });
+
+      map.fitBounds(corridorLine.getBounds(), { padding: [20, 20] });
+    }
+
+    async function fetchRadarMovements() {
+      const bounds = getBoundingBox(CORRIDOR_POINTS, 0.012, 0.018);
+      let lastErr = null;
+      for (const base of API_BASES) {
+        try {
+          const url = base + '/radar?' + new URLSearchParams({
+            north: bounds.north,
+            west: bounds.west,
+            south: bounds.south,
+            east: bounds.east,
+            results: '900',
+            frames: '0',
+            duration: '120',
+            polylines: 'false',
+            language: 'de',
+            suburban: 'false',
+            subway: 'false',
+            tram: 'true',
+            bus: 'true',
+            ferry: 'false',
+            express: 'false',
+            regional: 'false'
+          }).toString();
+
+          const response = await fetch(url);
+          if (!response.ok) throw new Error('HTTP ' + response.status + ' @ ' + base);
+          const data = await response.json();
+          document.getElementById('sourceText').innerHTML = 'Quelle: ' + base + '/radar | <a onclick="openImpressum()">Impressum</a>';
+          return Array.isArray(data.movements) ? data.movements : [];
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+
+      throw lastErr || new Error('Radar-API nicht erreichbar');
+    }
+
+    function normalizeMovements(movements) {
+      const seen = new Set();
+      const result = [];
+
+      movements.forEach((movement) => {
+        if (!isBusOrTram(movement) || !isAllowedLine(movement) || !movement.location) return;
+
+        const locationMetrics = corridorMetrics({
+          lat: movement.location.latitude,
+          lon: movement.location.longitude
+        });
+
+        const stopovers = Array.isArray(movement.nextStopovers) ? movement.nextStopovers : [];
+        let nearestStopMetric = null;
+        let bestDelayInfo = null;
+
+        stopovers.forEach((stopover) => {
+          const info = getDelayInfo(stopover);
+          if (!info || !info.stopLocation) return;
+          const metric = corridorMetrics({
+            lat: info.stopLocation.latitude,
+            lon: info.stopLocation.longitude
+          });
+          if (!nearestStopMetric || metric.distance < nearestStopMetric.distance) {
+            nearestStopMetric = metric;
+          }
+          if (!bestDelayInfo && metric.distance <= STOP_DISTANCE_METERS) {
+            bestDelayInfo = info;
+          }
+        });
+
+        const withinCorridor = locationMetrics.distance <= CORRIDOR_DISTANCE_METERS || (nearestStopMetric && nearestStopMetric.distance <= STOP_DISTANCE_METERS);
+        if (!withinCorridor) return;
+
+        const product = movement.line.product === 'tram' ? 'tram' : 'bus';
+        const tripId = String(movement.tripId || movement.id || '');
+        const key = [tripId, movement.line && movement.line.name, movement.direction, Math.round(locationMetrics.progress)].join('|');
+        if (seen.has(key)) return;
+        seen.add(key);
+
+        const delayMinutes = bestDelayInfo ? bestDelayInfo.delayMinutes : null;
+
+        result.push({
+          line: movement.line && movement.line.name ? movement.line.name : '-',
+          product,
+          direction: cleanDisplayName(movement.direction || '-'),
+          stopName: bestDelayInfo ? bestDelayInfo.stopName : '-',
+          planned: bestDelayInfo ? bestDelayInfo.planned : null,
+          actual: bestDelayInfo ? bestDelayInfo.actual : null,
+          delayMinutes,
+          lat: movement.location.latitude,
+          lon: movement.location.longitude,
+          distanceMeters: Math.round(locationMetrics.distance),
+          progress: locationMetrics.progress,
+          tripId
+        });
+      });
+
+      return result.sort((a, b) => a.progress - b.progress || a.line.localeCompare(b.line, 'de'));
+    }
+
+    function getDelayLabel(value) {
+      if (value === null || Number.isNaN(value)) return { text: 'keine Abweichung ermittelt', cls: '' };
+      if (value > 0) return { text: '+' + value + ' min', cls: 'late' };
+      if (value < 0) return { text: value + ' min', cls: 'early' };
+      return { text: 'pünktlich', cls: 'ontime' };
+    }
+
+    function renderList(rows) {
+      const list = document.getElementById('vehicleList');
+      if (!rows.length) {
+        list.innerHTML = '<li class="empty">Keine Fahrzeuge der Linien 18, M6, M8, 195 oder X54 im Korridor gefunden.</li>';
+        return;
+      }
+
+      list.innerHTML = rows.map((row) => {
+        const delay = getDelayLabel(row.delayMinutes);
+        const badgeLabel = row.product === 'tram' ? 'Tram' : 'Bus';
+        return '<li class="vehicle-item">' +
+          '<div class="vehicle-line"><span class="badge ' + row.product + '">' + badgeLabel + '</span><span>' + row.line + '</span></div>' +
+          '<div class="vehicle-destination">' + row.direction + '</div>' +
+          '<div class="vehicle-meta">Nächster Korridorhalt: ' + row.stopName + '</div>' +
+          '<div class="vehicle-meta">Soll: ' + formatTime(row.planned) + ' | Ist: ' + formatTime(row.actual) + ' | Abstand zur Korridorlinie: ' + row.distanceMeters + ' m</div>' +
+          '<div class="vehicle-meta">Abweichung: <span class="vehicle-delay ' + delay.cls + '">' + delay.text + '</span></div>' +
+          '</li>';
+      }).join('');
+    }
+
+    function buildVehicleIcon(row) {
+      const color = row.product === 'tram' ? '#ff0000' : '#7b1fa2';
+      const symbol = row.product === 'tram' ? 'T' : 'B';
+      return L.divIcon({
+        className: '',
+        html: '<div style="width:22px;height:22px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;color:#fff;font:700 11px Roboto Condensed, sans-serif;">' + symbol + '</div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+    }
+
+    function renderMap(rows) {
+      if (!markerLayer) return;
+      markerLayer.clearLayers();
+      rows.forEach((row) => {
+        const delay = getDelayLabel(row.delayMinutes);
+        L.marker([row.lat, row.lon], { icon: buildVehicleIcon(row) })
+          .bindTooltip(row.line + ' ' + row.direction + '<br>' + row.stopName + ' | ' + delay.text, {
+            direction: 'top',
+            className: 'vehicle-tooltip'
+          })
+          .addTo(markerLayer);
+      });
+    }
+
+    function renderCounts(rows) {
+      const tramCount = rows.filter((row) => row.product === 'tram').length;
+      const busCount = rows.filter((row) => row.product === 'bus').length;
+      document.getElementById('countsText').textContent = 'Fahrzeuge im Korridor: ' + rows.length + ' | Tram: ' + tramCount + ' | Bus: ' + busCount;
+    }
+
+    async function loadAll() {
+      try {
+        setStatus('Lade Radar-Daten ...', 'warn');
+        const movements = await fetchRadarMovements();
+        const rows = normalizeMovements(movements);
+        renderCounts(rows);
+        renderMap(rows);
+        renderList(rows);
+        setStatus('Aktualisiert (' + new Date().toLocaleTimeString('de-DE') + ')', 'ok');
+      } catch (e) {
+        setStatus('Fehler: ' + e.message, 'err');
+        document.getElementById('countsText').textContent = 'Fahrzeuge im Korridor: - | Tram: - | Bus: -';
+        document.getElementById('vehicleList').innerHTML = '<li class="empty">Fehler beim Laden der Radar-Daten.</li>';
+        if (markerLayer) markerLayer.clearLayers();
+      }
+    }
+
+    function toggleAuto() {
+      autoEnabled = !autoEnabled;
+      document.getElementById('toggleAutoBtn').textContent = 'Auto: ' + (autoEnabled ? 'an' : 'aus');
+      if (autoEnabled) {
+        autoTimer = setInterval(loadAll, AUTO_REFRESH_MS);
+      } else if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    }
+
+    function loadLeafletScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.crossOrigin = 'anonymous';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    function wait(ms) {
+      return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+      });
+    }
+
+    async function ensureLeaflet() {
+      if (window.L) return true;
+      try {
+        await loadLeafletScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
+        return Boolean(window.L);
+      } catch (e) {
+        try {
+          await loadLeafletScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');
+          return Boolean(window.L);
+        } catch (secondError) {
+          return false;
+        }
+      }
+    }
+
+    async function startApp() {
+      if (appStarted) return;
+      appStarted = true;
+
+      loadAll();
+      autoTimer = setInterval(loadAll, AUTO_REFRESH_MS);
+
+      const leafletReady = await Promise.race([
+        ensureLeaflet(),
+        wait(6000).then(() => false)
+      ]);
+
+      if (leafletReady) {
+        initMap();
+      } else {
+        setMapFallbackMessage('Karte konnte nicht geladen werden. Die Fahrzeugliste wird trotzdem angezeigt.');
+      }
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', loadAll);
+    document.getElementById('toggleAutoBtn').addEventListener('click', toggleAuto);
+    document.getElementById('impressumModal').addEventListener('click', (e) => {
+      if (e.target.id === 'impressumModal') {
+        closeImpressum();
+      }
+    });
+
+    startApp();
+  </script>
+</body>
+</html>
