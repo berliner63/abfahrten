@@ -190,14 +190,14 @@
         const line = escapeHtml(dep?.line?.name || "-");
         const direction = escapeHtml(dep?.direction || "-");
         const time = escapeHtml(formatTime(dep?.when));
-        return `<span class="item"><span class="line-name">${line}</span> <span class="direction">Richtung ${direction}</span> <span class="time">${time} Uhr</span></span>`;
+        return `<span class="item"><span class="line-name">${line}</span> <span class="direction">&rarr; ${direction}</span> <span class="time">${time} Uhr</span></span>`;
       });
 
       const html = items.join('<span class="sep">&middot;</span>');
       ticker.innerHTML = `<div class="ticker-track" id="tickerTrack"><div class="ticker-chunk">${html}</div><div class="ticker-chunk" aria-hidden="true">${html}</div></div>`;
 
       const plainLength = deps
-        .map(dep => `${dep?.line?.name || ""} Richtung ${dep?.direction || ""} ${formatTime(dep?.when)} Uhr`)
+        .map(dep => `${dep?.line?.name || ""} -> ${dep?.direction || ""} ${formatTime(dep?.when)} Uhr`)
         .join(" ")
         .length;
       const duration = Math.max(20, Math.min(90, Math.round(plainLength / 3.5)));
