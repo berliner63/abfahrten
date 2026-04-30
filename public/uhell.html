@@ -82,6 +82,17 @@
       font-weight: 500;
     }
 
+    .ticker-label {
+      flex-shrink: 0;
+      padding: 0 16px;
+      font-weight: 700;
+      font-size: var(--fs-ticker);
+      color: #ffd27a;
+      letter-spacing: 0.04em;
+      border-right: 2px solid var(--line);
+      margin-right: 4px;
+    }
+
     .sep {
       color: var(--muted);
       padding: 0 16px;
@@ -107,6 +118,7 @@
 <body>
   <main class="ticker-shell" aria-live="polite">
     <div class="ticker" id="ticker">
+      <span class="ticker-label">UHELL:</span>
       <div class="meta">Lade Abfahrten &hellip;</div>
     </div>
   </main>
