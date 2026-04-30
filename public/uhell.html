@@ -77,6 +77,11 @@
     .direction { color: #d7d7d7; font-weight: 400; }
     .time { color: #ffffff; }
 
+    .remark {
+      color: #ffd27a;
+      font-weight: 500;
+    }
+
     .sep {
       color: var(--muted);
       padding: 0 16px;
@@ -128,6 +133,29 @@
       return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
     }
 
+    function normalizeRemarkText(text) {
+      return String(text || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function getTrafficMessages(dep) {
+      if (!Array.isArray(dep?.remarks)) return [];
+
+      return dep.remarks
+        .filter(r => r && (r.type === "warning" || r.type === "status"))
+        .map(r => (r.text || r.summary || "").trim())
+        .filter(Boolean)
+        .filter(msg => {
+          const normalized = normalizeRemarkText(msg);
+          return normalized !== "fahrradmitnahme moglich" && normalized !== "fahrradmitnahme moeglich";
+        })
+        .filter((msg, index, arr) => arr.findIndex(x => normalizeRemarkText(x) === normalizeRemarkText(msg)) === index);
+    }
+
     async function fetchWithRetry(url, retries = 2) {
       let lastError;
       for (let i = 0; i <= retries; i++) {
@@ -169,7 +197,14 @@
         const line = escapeHtml(dep?.line?.name || "-");
         const direction = escapeHtml(dep?.direction || "-");
         const time = escapeHtml(formatTime(dep?.when));
-        return `<span class="item"><span class="line-name">${line}</span> <span class="direction">&rarr; ${direction}</span> <span class="time">${time} Uhr</span></span>`;
+        const trafficMessages = getTrafficMessages(dep)
+          .map(msg => escapeHtml(msg))
+          .join(" &middot; ");
+        const remarksHtml = trafficMessages
+          ? ` <span class="remark">&#x26A0;&#xFE0F; ${trafficMessages}</span>`
+          : "";
+
+        return `<span class="item"><span class="line-name">${line}</span> <span class="direction">&rarr; ${direction}</span> <span class="time">${time} Uhr</span>${remarksHtml}</span>`;
       });
 
       const html = items.join('<span class="sep">&middot;</span>');
