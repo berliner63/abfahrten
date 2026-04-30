@@ -116,6 +116,7 @@
     const API_BASES = ["https://v6.bvg.transport.rest", "https://v6.vbb.transport.rest"];
     const MAX_RESULTS = 5;
     const REFRESH_MS = 60000;
+    const REQUEST_TIMEOUT_MS = 12000;
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -159,11 +160,15 @@
     async function fetchWithRetry(url, retries = 2) {
       let lastError;
       for (let i = 0; i <= retries; i++) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
         try {
-          const res = await fetch(url, { cache: "no-store" });
+          const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+          clearTimeout(timeout);
           if (res.ok) return res;
           lastError = new Error(`HTTP ${res.status}`);
         } catch (e) {
+          clearTimeout(timeout);
           lastError = e;
         }
       }
@@ -172,15 +177,28 @@
 
     async function fetchDepartures() {
       let lastErr;
+      let firstSuccessfulResult = null;
       for (const base of API_BASES) {
         try {
           const url = `${base}/stops/${FROM_STOP}/departures?duration=90&results=30&language=de`;
           const res = await fetchWithRetry(url);
           const data = await res.json();
-          return Array.isArray(data.departures) ? data.departures : [];
+          const departures = Array.isArray(data?.departures)
+            ? data.departures
+            : (Array.isArray(data) ? data : []);
+
+          if (firstSuccessfulResult === null) {
+            firstSuccessfulResult = departures;
+          }
+          if (departures.length > 0) {
+            return departures;
+          }
         } catch (e) {
           lastErr = e;
         }
+      }
+      if (firstSuccessfulResult !== null) {
+        return firstSuccessfulResult;
       }
       throw lastErr || new Error("API nicht erreichbar");
     }
@@ -196,7 +214,7 @@
       const items = deps.map(dep => {
         const line = escapeHtml(dep?.line?.name || "-");
         const direction = escapeHtml(dep?.direction || "-");
-        const time = escapeHtml(formatTime(dep?.when));
+        const time = escapeHtml(formatTime(dep?.when || dep?.plannedWhen));
         const trafficMessages = getTrafficMessages(dep)
           .map(msg => escapeHtml(msg))
           .join(" &middot; ");
@@ -211,7 +229,7 @@
       ticker.innerHTML = `<div class="ticker-track" id="tickerTrack"><div class="ticker-chunk">${html}</div><div class="ticker-chunk" aria-hidden="true">${html}</div></div>`;
 
       const plainLength = deps
-        .map(dep => `${dep?.line?.name || ""} -> ${dep?.direction || ""} ${formatTime(dep?.when)} Uhr`)
+        .map(dep => `${dep?.line?.name || ""} -> ${dep?.direction || ""} ${formatTime(dep?.when || dep?.plannedWhen)} Uhr`)
         .join(" ")
         .length;
       const duration = Math.max(20, Math.min(90, Math.round(plainLength / 3.5)));
