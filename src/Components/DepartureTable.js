@@ -122,7 +122,10 @@ const DepartureTable = (props) => {
 
   const processRemarks = (remarks) => {
     if (!remarks?.length) return "";
-    return remarks.map((remark) => remark.text).join(" *** ");
+    return remarks
+      .filter((remark) => remark.text !== "Fahrradmitnahme möglich")
+      .map((remark) => remark.text)
+      .join(" *** ");
   };
 
   const getSortedData = () => {
