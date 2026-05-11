@@ -155,12 +155,22 @@
         .trim();
     }
 
+    function removeLinksFromRemark(text) {
+      return String(text || "")
+        .replace(/<a\b[^>]*>.*?<\/a>/gi, " ")
+        .replace(/\[[^\]]*\]\((?:https?:\/\/|www\.)[^)]+\)/gi, " ")
+        .replace(/(?:https?:\/\/|www\.)\S+/gi, " ")
+        .replace(/\s+/g, " ")
+        .replace(/[\s,;:()-]+$/g, "")
+        .trim();
+    }
+
     function getTrafficMessages(dep) {
       if (!Array.isArray(dep?.remarks)) return [];
 
       return dep.remarks
         .filter(r => r && (r.type === "warning" || r.type === "status"))
-        .map(r => (r.text || r.summary || "").trim())
+        .map(r => removeLinksFromRemark((r.text || r.summary || "").trim()))
         .filter(Boolean)
         .filter(msg => {
           const normalized = normalizeRemarkText(msg);
