@@ -85,7 +85,16 @@ function extractLines(payload) {
     return [];
 }
 
+let loadInProgress = false;
+let loadRunId = 0;
+
 async function loadData() {
+    if (loadInProgress) {
+        return;
+    }
+
+    loadInProgress = true;
+    const currentRunId = ++loadRunId;
     const status = document.getElementById("status");
     const tableBody = document.querySelector("#t18table tbody");
     tableBody.innerHTML = "<tr><td colspan='5'>Lade Daten…</td></tr>";
@@ -118,6 +127,10 @@ async function loadData() {
 
         const radarArray = Array.isArray(radarData) ? radarData : [];
         const t18Vehicles = radarArray.filter(v => v.line?.name === "18" && v.location && v.location.latitude && v.location.longitude);
+
+        if (currentRunId !== loadRunId) {
+            return;
+        }
 
         tableBody.innerHTML = "";
 
@@ -168,6 +181,10 @@ async function loadData() {
         const departures = Array.isArray(depData) ? depData : (depData?.departures || []);
         const t18 = departures.filter(d => d.line?.name === "18");
 
+        if (currentRunId !== loadRunId) {
+            return;
+        }
+
         if (t18.length === 0) {
             tableBody.innerHTML = "<tr><td colspan='5'>Keine 18-Fahrten im Fahrplan gefunden.</td></tr>";
             return;
@@ -188,11 +205,15 @@ async function loadData() {
         status.textContent = "Fehler beim Laden der Daten.";
         status.className = "error";
         tableBody.innerHTML = "<tr><td colspan='5'>Fehler beim Laden der Daten.</td></tr>";
+    } finally {
+        if (currentRunId === loadRunId) {
+            loadInProgress = false;
+        }
     }
 }
 
 loadData();
-setInterval(loadData, 10000);
+setInterval(loadData, 30000);
 </script>
 
 </body>
