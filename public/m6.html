@@ -51,85 +51,122 @@ function distance(a, b) {
     return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
 }
 
+async function fetchJsonWithTimeout(url, timeoutMs = 8000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+async function fetchFirstSuccessfulJson(urls) {
+    let lastError = null;
+    for (const url of urls) {
+        try {
+            return await fetchJsonWithTimeout(url);
+        } catch (error) {
+            lastError = error;
+        }
+    }
+    throw lastError || new Error("Alle Endpunkte fehlgeschlagen.");
+}
+
+function normalizeList(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.departures)) return payload.departures;
+    if (Array.isArray(payload?.lines)) return payload.lines;
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
+}
+
+let loadInProgress = false;
+let loadRunId = 0;
+
 async function loadData() {
+    if (loadInProgress) return;
+    loadInProgress = true;
+    const currentRunId = ++loadRunId;
     const status = document.getElementById("status");
     const tableBody = document.querySelector("#m6table tbody");
     tableBody.innerHTML = "<tr><td colspan='5'>Lade Daten…</td></tr>";
 
-    // 1. Haltestellen der M6 laden
-    let stops;
     try {
-        const lineRes = await fetch("https://v6.bvg.transport.rest/lines?query=M6&includeRoutes=true");
-        const lineData = await lineRes.json();
-
-        if (!lineData[0]?.routes?.[0]?.stops) {
-            throw new Error("Keine Routen verfügbar");
+        let stops = [];
+        try {
+            const lineData = await fetchFirstSuccessfulJson([
+                "https://v6.bvg.transport.rest/lines?query=M6&includeRoutes=true",
+                "https://v6.vbb.transport.rest/lines?name=M6&variants=true"
+            ]);
+            const lines = normalizeList(lineData);
+            const line = lines.find(l => String(l?.name || "") === "M6") || lines[0];
+            stops = line?.routes?.[0]?.stops || line?.variants?.[0]?.stops || [];
+        } catch {
+            stops = [];
         }
 
-        stops = lineData[0].routes[0].stops;
-    } catch (e) {
-        status.textContent = "Fehler: Haltestellen konnten nicht geladen werden.";
-        status.className = "error";
-        tableBody.innerHTML = "<tr><td colspan='5'>Keine Daten verfügbar.</td></tr>";
-        return;
-    }
+        let radarData = [];
+        try {
+            radarData = await fetchFirstSuccessfulJson([
+                "https://v6.bvg.transport.rest/radar?products=metro&north=52.60&south=52.48&east=13.70&west=13.45",
+                "https://v6.vbb.transport.rest/radar?north=52.60&south=52.48&east=13.70&west=13.45"
+            ]);
+        } catch {
+            radarData = [];
+        }
 
-    // 2. Radar-Daten laden
-    let radarData = [];
-    try {
-        const radarRes = await fetch(
-            "https://v6.bvg.transport.rest/radar?products=metro&north=52.60&south=52.48&east=13.70&west=13.45"
-        );
-        radarData = await radarRes.json();
-    } catch {
-        radarData = [];
-    }
+        if (currentRunId !== loadRunId) return;
 
-    const m6Vehicles = radarData.filter(v => v.line?.name === "M6");
+        const m6Vehicles = normalizeList(radarData).filter(v => v.line?.name === "M6" && v.location?.latitude && v.location?.longitude);
 
-    tableBody.innerHTML = "";
+        tableBody.innerHTML = "";
 
-    // 3. Live-Daten verfügbar
-    if (m6Vehicles.length > 0) {
-        status.textContent = "Live-Daten aktiv";
-        status.className = "live";
+        if (m6Vehicles.length > 0 && stops.length > 0) {
+            status.textContent = "Live-Daten aktiv";
+            status.className = "live";
 
-        m6Vehicles.forEach(v => {
-            const nearest = stops
-                .map(stop => ({
-                    stop,
-                    dist: distance(v.location, stop.location)
-                }))
-                .sort((a,b) => a.dist - b.dist)[0];
+            m6Vehicles.forEach(v => {
+                const stopsWithLocation = stops.filter(s => s?.location?.latitude && s?.location?.longitude);
+                const nearest = stopsWithLocation.length > 0
+                    ? stopsWithLocation.map(stop => ({ stop, dist: distance(v.location, stop.location) })).sort((a,b) => a.dist - b.dist)[0]
+                    : null;
 
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${v.tripId || "–"}</td>
-                <td>${cleanDisplayName(v.direction) || "–"}</td>
-                <td>${cleanDisplayName(nearest.stop.name)}</td>
-                <td>${Math.round(nearest.dist)} m</td>
-                <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
-            `;
-            tableBody.appendChild(row);
-        });
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${v.tripId || "–"}</td>
+                    <td>${cleanDisplayName(v.direction) || "–"}</td>
+                    <td>${cleanDisplayName(nearest?.stop?.name || "–")}</td>
+                    <td>${nearest ? Math.round(nearest.dist) + " m" : "–"}</td>
+                    <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
+                `;
+                tableBody.appendChild(row);
+            });
 
-        return;
-    }
+            return;
+        }
 
-    // 4. Fallback: Fahrplan
-    status.textContent = "Keine Live-Daten – Fahrplan wird angezeigt";
-    status.className = "fallback";
+        status.textContent = "Keine Live-Daten – Fahrplan wird angezeigt";
+        status.className = "fallback";
 
-    try {
-        // Nimm die erste Haltestelle der M6 als Referenz
-        const firstStop = stops[0].id;
+        const firstStop = stops[0]?.id;
+        if (!firstStop) {
+            tableBody.innerHTML = "<tr><td colspan='5'>Keine M6-Haltestellen verfügbar.</td></tr>";
+            return;
+        }
 
-        const depRes = await fetch(
-            `https://v6.bvg.transport.rest/stops/${firstStop}/departures?duration=60`
-        );
-        const depData = await depRes.json();
+        const depData = await fetchFirstSuccessfulJson([
+            `https://v6.bvg.transport.rest/stops/${firstStop}/departures?duration=60`,
+            `https://v6.vbb.transport.rest/stops/${firstStop}/departures?duration=60`
+        ]);
+        const m6 = normalizeList(depData).filter(d => d.line?.name === "M6");
 
-        const m6 = depData.filter(d => d.line?.name === "M6");
+        if (currentRunId !== loadRunId) return;
 
         if (m6.length === 0) {
             tableBody.innerHTML = "<tr><td colspan='5'>Keine M6-Fahrten im Fahrplan gefunden.</td></tr>";
@@ -141,20 +178,23 @@ async function loadData() {
             row.innerHTML = `
                 <td>–</td>
                 <td>${cleanDisplayName(d.direction)}</td>
-                <td>${cleanDisplayName(d.stop.name)}</td>
+                <td>${cleanDisplayName(d.stop?.name)}</td>
                 <td>–</td>
                 <td>${d.delay ? (d.delay/60).toFixed(1) + " min" : "0 min"}</td>
             `;
             tableBody.appendChild(row);
         });
-
     } catch {
-        tableBody.innerHTML = "<tr><td colspan='5'>Fehler beim Laden der Fahrplan-Daten.</td></tr>";
+        status.textContent = "Fehler beim Laden der Daten.";
+        status.className = "error";
+        tableBody.innerHTML = "<tr><td colspan='5'>Fehler beim Laden der Daten.</td></tr>";
+    } finally {
+        if (currentRunId === loadRunId) loadInProgress = false;
     }
 }
 
 loadData();
-setInterval(loadData, 10000);
+setInterval(loadData, 30000);
 </script>
 
 </body>
