@@ -51,84 +51,120 @@ function distance(a, b) {
     return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
 }
 
+async function fetchJsonWithTimeout(url, timeoutMs = 8000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+async function fetchFirstSuccessfulJson(urls) {
+    let lastError = null;
+    for (const url of urls) {
+        try {
+            return await fetchJsonWithTimeout(url);
+        } catch (error) {
+            lastError = error;
+        }
+    }
+    throw lastError || new Error("Alle Endpunkte fehlgeschlagen.");
+}
+
+function extractLines(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.lines)) return payload.lines;
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
+}
+
 async function loadData() {
     const status = document.getElementById("status");
     const tableBody = document.querySelector("#t18table tbody");
     tableBody.innerHTML = "<tr><td colspan='5'>Lade Daten…</td></tr>";
 
-    // 1. Haltestellen der 18 laden
-    let stops;
     try {
-        const lineRes = await fetch("https://v6.vbb.transport.rest/lines?name=18&variants=true");
-        const lineData = await lineRes.json();
-        const lines = Array.isArray(lineData) ? lineData : [];
-        const line18 = lines.find(l => String(l?.name || "") === "18") || lines[0];
-
-        stops = line18?.variants?.[0]?.stops || line18?.routes?.[0]?.stops || [];
-
-        if (!Array.isArray(stops) || stops.length === 0) {
-            throw new Error("Keine Routen verfügbar");
+        // 1. Haltestellen der 18 laden
+        let stops = [];
+        try {
+            const lineData = await fetchFirstSuccessfulJson([
+                "https://v6.vbb.transport.rest/lines?name=18&variants=true",
+                "https://v6.vbb.transport.rest/lines?query=18&variants=true"
+            ]);
+            const lines = extractLines(lineData);
+            const line18 = lines.find(l => String(l?.name || "") === "18") || lines[0];
+            stops = line18?.variants?.[0]?.stops || line18?.routes?.[0]?.stops || [];
+        } catch {
+            stops = [];
         }
-    } catch (e) {
-        status.textContent = "Fehler: Haltestellen konnten nicht geladen werden.";
-        status.className = "error";
-        tableBody.innerHTML = "<tr><td colspan='5'>Keine Daten verfügbar.</td></tr>";
-        return;
-    }
 
-    // 2. Radar-Daten laden (Tram, nicht Metro!)
-    let radarData = [];
-    try {
-        const radarRes = await fetch(
-            "https://v6.bvg.transport.rest/radar?products=tram&north=52.60&south=52.48&east=13.70&west=13.45"
-        );
-        radarData = await radarRes.json();
-    } catch {
-        radarData = [];
-    }
+        // 2. Radar-Daten laden (Tram)
+        let radarData = [];
+        try {
+            radarData = await fetchFirstSuccessfulJson([
+                "https://v6.bvg.transport.rest/radar?products=tram&north=52.60&south=52.48&east=13.70&west=13.45",
+                "https://v6.vbb.transport.rest/radar?north=52.60&south=52.48&east=13.70&west=13.45"
+            ]);
+        } catch {
+            radarData = [];
+        }
 
-    const t18Vehicles = radarData.filter(v => v.line?.name === "18" && v.location && v.location.latitude && v.location.longitude);
+        const radarArray = Array.isArray(radarData) ? radarData : [];
+        const t18Vehicles = radarArray.filter(v => v.line?.name === "18" && v.location && v.location.latitude && v.location.longitude);
 
-    tableBody.innerHTML = "";
+        tableBody.innerHTML = "";
 
-    // 3. Live-Daten verfügbar
-    if (t18Vehicles.length > 0) {
-        status.textContent = "Live-Daten aktiv";
-        status.className = "live";
+        // 3. Live-Daten verfügbar
+        if (t18Vehicles.length > 0) {
+            status.textContent = "Live-Daten aktiv";
+            status.className = "live";
 
-        t18Vehicles.forEach(v => {
-            const nearest = stops
-                .map(stop => ({
-                    stop,
-                    dist: distance(v.location, stop.location)
-                }))
-                .sort((a,b) => a.dist - b.dist)[0];
+            t18Vehicles.forEach(v => {
+                const stopsWithLocation = stops.filter(s => s?.location?.latitude && s?.location?.longitude);
+                const nearest = stopsWithLocation.length > 0
+                    ? stopsWithLocation
+                        .map(stop => ({
+                            stop,
+                            dist: distance(v.location, stop.location)
+                        }))
+                        .sort((a,b) => a.dist - b.dist)[0]
+                    : null;
 
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${v.tripId || "–"}</td>
-                <td>${cleanDisplayName(v.direction) || "–"}</td>
-                <td>${cleanDisplayName(nearest.stop.name)}</td>
-                <td>${Math.round(nearest.dist)} m</td>
-                <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
-            `;
-            tableBody.appendChild(row);
-        });
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${v.tripId || "–"}</td>
+                    <td>${cleanDisplayName(v.direction) || "–"}</td>
+                    <td>${cleanDisplayName(nearest?.stop?.name || "–")}</td>
+                    <td>${nearest ? Math.round(nearest.dist) + " m" : "–"}</td>
+                    <td>${v.delay ? (v.delay/60).toFixed(1) + " min" : "0 min"}</td>
+                `;
+                tableBody.appendChild(row);
+            });
 
-        return;
-    }
+            return;
+        }
 
-    // 4. Fallback: Fahrplan
-    status.textContent = "Keine Live-Daten – Fahrplan wird angezeigt";
-    status.className = "fallback";
+        // 4. Fallback: Fahrplan
+        status.textContent = "Keine Live-Daten – Fahrplan wird angezeigt";
+        status.className = "fallback";
 
-    try {
-        const firstStop = stops[0].id;
+        const firstStop = stops[0]?.id;
+        if (!firstStop) {
+            tableBody.innerHTML = "<tr><td colspan='5'>Keine 18-Haltestellen verfügbar.</td></tr>";
+            return;
+        }
 
-        const depRes = await fetch(
-            `https://v6.bvg.transport.rest/stops/${firstStop}/departures?duration=60`
-        );
-        const depData = await depRes.json();
+        const depData = await fetchFirstSuccessfulJson([
+            `https://v6.bvg.transport.rest/stops/${firstStop}/departures?duration=60`,
+            `https://v6.vbb.transport.rest/stops/${firstStop}/departures?duration=60`
+        ]);
         const departures = Array.isArray(depData) ? depData : (depData?.departures || []);
         const t18 = departures.filter(d => d.line?.name === "18");
 
@@ -148,9 +184,10 @@ async function loadData() {
             `;
             tableBody.appendChild(row);
         });
-
     } catch {
-        tableBody.innerHTML = "<tr><td colspan='5'>Fehler beim Laden der Fahrplan-Daten.</td></tr>";
+        status.textContent = "Fehler beim Laden der Daten.";
+        status.className = "error";
+        tableBody.innerHTML = "<tr><td colspan='5'>Fehler beim Laden der Daten.</td></tr>";
     }
 }
 
