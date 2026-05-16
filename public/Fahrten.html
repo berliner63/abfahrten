@@ -48,7 +48,7 @@
     .controls button { cursor: pointer; }
     .controls button:hover { background: #1b1b1b; }
     table { border-collapse: collapse; table-layout: fixed; width: 100%; max-width: 720px; margin: 24px auto; background: #000; box-sizing: border-box; }
-    th, td { border: 1px solid #333; padding: 12px 8px; text-align: left; color: #fff; font-size: 20px; }
+    th, td { border: 1px solid #333; padding: 12px 8px; text-align: left; color: #fff; font-size: 20px; width: 25%; }
     th { background: #111; }
     tr:nth-child(even) { background: #0d0d0d; }
     h1 { margin: 0; }
@@ -214,13 +214,13 @@
       }
 
       th:nth-child(1),
-      td:nth-child(1) { width: 14%; }
+      td:nth-child(1) { width: 25%; }
       th:nth-child(2),
-      td:nth-child(2) { width: 50%; word-break: break-word; }
+      td:nth-child(2) { width: 25%; word-break: break-word; }
       th:nth-child(3),
-      td:nth-child(3) { width: 20%; }
+      td:nth-child(3) { width: 25%; }
       th:nth-child(4),
-      td:nth-child(4) { width: 16%; }
+      td:nth-child(4) { width: 25%; }
 
       .page-note {
         width: calc(100% - 16px);
@@ -332,6 +332,7 @@
     ];
     const REQUEST_TIMEOUT_MS = 9000;
     const MAX_RETRIES_PER_ENDPOINT = 1;
+    const MAX_DISPLAYED_DEPARTURES = 9;
     const CACHE_PREFIX = 'fahrten-cache-v1:';
     const DEFAULT_STOP_ID = '900175007';
     const DEFAULT_STOP_NAME = 'U Hellersdorf';
@@ -582,7 +583,7 @@
           return;
         }
 
-        const rows = depList.slice(0, 11);
+        const rows = depList.slice(0, MAX_DISPLAYED_DEPARTURES);
         renderRows(rows);
         saveDeparturesToCache(selectedStopId, selectedStopName, rows, departureResult.base);
         if (departureResult.usedFallback) {
@@ -607,7 +608,7 @@
     function renderRows(depList) {
       const tbody = document.getElementById('departures');
       tbody.innerHTML = '';
-      depList.slice(0, 11).forEach(dep => {
+      depList.slice(0, MAX_DISPLAYED_DEPARTURES).forEach(dep => {
         // Ist-Zeit und Klasse berechnen
         let planned = dep.plannedWhen ? new Date(dep.plannedWhen) : null;
         let actual = dep.when ? new Date(dep.when) : null;
