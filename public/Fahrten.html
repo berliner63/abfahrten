@@ -47,8 +47,8 @@
     .controls select { flex: 2 1 360px; }
     .controls button { cursor: pointer; }
     .controls button:hover { background: #1b1b1b; }
-    table { border-collapse: collapse; table-layout: fixed; width: 100%; max-width: 720px; margin: 24px auto; background: #000; }
-    th, td { border: 1px solid #333; padding: 12px 8px; text-align: left; color: #fff; }
+    table { border-collapse: collapse; table-layout: fixed; width: 100%; max-width: 720px; margin: 24px auto; background: #000; box-sizing: border-box; }
+    th, td { border: 1px solid #333; padding: 12px 8px; text-align: left; color: #fff; font-size: 20px; }
     th { background: #111; }
     tr:nth-child(even) { background: #0d0d0d; }
     h1 { margin: 0; }
@@ -67,12 +67,13 @@
     .data-status {
       width: 100%;
       max-width: 720px;
+      box-sizing: border-box;
       margin: 10px auto 0 auto;
       padding: 8px 10px;
       border: 1px solid #333;
       background: #0d0d0d;
       color: #e0e0e0;
-      font-size: 14px;
+      font-size: 18px;
     }
     .data-status.live { color: #8bc34a; border-color: #2e7d32; }
     .data-status.fallback { color: #ffd54f; border-color: #f9a825; }
@@ -208,7 +209,7 @@
 
       th,
       td {
-        font-size: 17px;
+        font-size: 19px;
         padding: 10px 8px;
       }
 
@@ -230,7 +231,7 @@
       .data-status {
         width: calc(100% - 16px);
         max-width: none;
-        font-size: 14px;
+        font-size: 16px;
       }
 
       th:nth-child(3),
