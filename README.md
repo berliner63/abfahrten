@@ -75,6 +75,26 @@ npm test -- --watchAll=false
 ## Development
 The React source code lives in the [`src`](./src) directory while static assets such as `index.html` reside in [`public`](./public). Feel free to open issues or pull requests if you want to contribute. Please read our [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
 
+## DB Train Ticker (documented API)
+The project now includes a standalone ticker page at [`public/db-train-ticker.html`](./public/db-train-ticker.html).
+
+It uses the documented `v6.db.transport.rest` endpoints and can be configured via URL query parameters.
+
+Example:
+```text
+/db-train-ticker.html?station=Berlin%20Hbf&line=ICE%201005&max=6&refreshSec=60
+```
+
+Supported parameters:
+- `station` (default: `Berlin Hbf`) - station search string if no `stopId` is given
+- `stopId` - station id (preferred for stable operation)
+- `line` - filter by train line name (substring match), e.g. `ICE 1005`
+- `tripId` - exact trip filter (overrides line-only ambiguity)
+- `direction` - optional destination filter (substring match)
+- `max` - number of displayed departures (1-12, default 6)
+- `duration` - departure lookahead in minutes (15-180, default 90)
+- `refreshSec` - refresh interval in seconds (15-300, default 60)
+
 ## Cookie Usage
 This project stores a few cookies in your browser to save your personal settings. They are only used to improve your experience and are never shared with third parties. The cookies currently in use are:
 
