@@ -59,14 +59,16 @@ async function loadData() {
     // 1. Haltestellen der 18 laden
     let stops;
     try {
-        const lineRes = await fetch("https://v6.bvg.transport.rest/lines?query=18&includeRoutes=true");
+        const lineRes = await fetch("https://v6.vbb.transport.rest/lines?name=18&variants=true");
         const lineData = await lineRes.json();
+        const lines = Array.isArray(lineData) ? lineData : [];
+        const line18 = lines.find(l => String(l?.name || "") === "18") || lines[0];
 
-        if (!lineData[0]?.routes?.[0]?.stops) {
+        stops = line18?.variants?.[0]?.stops || line18?.routes?.[0]?.stops || [];
+
+        if (!Array.isArray(stops) || stops.length === 0) {
             throw new Error("Keine Routen verfügbar");
         }
-
-        stops = lineData[0].routes[0].stops;
     } catch (e) {
         status.textContent = "Fehler: Haltestellen konnten nicht geladen werden.";
         status.className = "error";
@@ -85,7 +87,7 @@ async function loadData() {
         radarData = [];
     }
 
-    const t18Vehicles = radarData.filter(v => v.line?.name === "18");
+    const t18Vehicles = radarData.filter(v => v.line?.name === "18" && v.location && v.location.latitude && v.location.longitude);
 
     tableBody.innerHTML = "";
 
@@ -127,8 +129,8 @@ async function loadData() {
             `https://v6.bvg.transport.rest/stops/${firstStop}/departures?duration=60`
         );
         const depData = await depRes.json();
-
-        const t18 = depData.filter(d => d.line?.name === "18");
+        const departures = Array.isArray(depData) ? depData : (depData?.departures || []);
+        const t18 = departures.filter(d => d.line?.name === "18");
 
         if (t18.length === 0) {
             tableBody.innerHTML = "<tr><td colspan='5'>Keine 18-Fahrten im Fahrplan gefunden.</td></tr>";
