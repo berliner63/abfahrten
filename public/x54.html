@@ -84,6 +84,13 @@ function normalizeList(payload) {
     return [];
 }
 
+const isDemoMode = new URLSearchParams(window.location.search).get("demo") === "1";
+
+const demoRows = [
+    { tripId: "demo-x54-1", direction: "S Mahlsdorf", stopName: "Marzahn, S-Bhf.", dist: 210, delay: 0 },
+    { tripId: "demo-x54-2", direction: "S Hohenschönhausen", stopName: "Biesdorf", dist: 560, delay: 90 },
+];
+
 let loadInProgress = false;
 let loadRunId = 0;
 
@@ -97,6 +104,24 @@ async function loadData() {
     tableBody.innerHTML = "<tr><td colspan='5'>Lade Daten…</td></tr>";
 
     try {
+        if (isDemoMode) {
+            status.textContent = "Testmodus – Beispiel-Daten werden angezeigt";
+            status.className = "live";
+            tableBody.innerHTML = "";
+            demoRows.forEach(rowData => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${rowData.tripId}</td>
+                    <td>${rowData.direction}</td>
+                    <td>${rowData.stopName}</td>
+                    <td>${rowData.dist} m</td>
+                    <td>${rowData.delay ? (rowData.delay/60).toFixed(1) + " min" : "0 min"}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            return;
+        }
+
         let stops = [];
         try {
             const lineData = await fetchFirstSuccessfulJson([
