@@ -77,6 +77,16 @@
     .direction { color: #d7d7d7; font-weight: 400; }
     .time { color: #ffffff; }
 
+    .schedule-status {
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    .schedule-status.early { color: #ff4d4d; }
+    .schedule-status.late { color: #ffd54f; }
+    .schedule-status.ontime { color: #66bb6a; }
+    .schedule-status.unknown { color: #64b5f6; }
+
     .remark {
       color: #ffd27a;
       font-weight: 500;
@@ -129,7 +139,8 @@
     const API_BASES = ["https://v6.bvg.transport.rest", "https://v6.vbb.transport.rest"];
     const MAX_RESULTS = 5;
     const REFRESH_MS = 60000;
-    const REQUEST_TIMEOUT_MS = 12000;
+    const REQUEST_TIMEOUT_MS = 7000;
+    let hasRenderedData = false;
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -156,12 +167,61 @@
         .trim();
     }
 
+    function removeLinksFromRemark(text) {
+      return String(text || "")
+        .replace(/<a\b[^>]*>.*?<\/a>/gi, " ")
+        .replace(/\[[^\]]*\]\((?:https?:\/\/|www\.)[^)]+\)/gi, " ")
+        .replace(/(?:https?:\/\/|www\.)\S+/gi, " ")
+        .replace(/\s+/g, " ")
+        .replace(/[\s,;:()-]+$/g, "")
+        .trim();
+    }
+
+    function abbreviateTrafficMessage(text) {
+      return String(text || "").replace(/\bersatzverkehr\b/gi, "EV");
+    }
+
+    function parseIsoDate(iso) {
+      if (!iso) return null;
+      const date = new Date(iso);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function toDelayMinutesFromField(rawDelay) {
+      const delay = Number(rawDelay);
+      if (!Number.isFinite(delay)) return null;
+      if (Math.abs(delay) > 100) return Math.round(delay / 60);
+      return Math.round(delay);
+    }
+
+    function getScheduleStatus(dep) {
+      const planned = parseIsoDate(dep?.plannedWhen);
+      const actual = parseIsoDate(dep?.when);
+
+      if (planned && actual) {
+        const minutes = Math.round((actual.getTime() - planned.getTime()) / 60000);
+        if (minutes < 0) return { type: "early", label: String(minutes) };
+        if (minutes > 0) return { type: "late", label: `+${minutes}` };
+        return { type: "ontime", label: "0" };
+      }
+
+      const delayFromField = toDelayMinutesFromField(dep?.delay);
+      if (delayFromField !== null) {
+        if (delayFromField < 0) return { type: "early", label: String(delayFromField) };
+        if (delayFromField > 0) return { type: "late", label: `+${delayFromField}` };
+        return { type: "ontime", label: "0" };
+      }
+
+      return { type: "unknown", label: "?" };
+    }
+
     function getTrafficMessages(dep) {
       if (!Array.isArray(dep?.remarks)) return [];
 
       return dep.remarks
         .filter(r => r && (r.type === "warning" || r.type === "status"))
-        .map(r => (r.text || r.summary || "").trim())
+        .map(r => removeLinksFromRemark((r.text || r.summary || "").trim()))
+        .map(abbreviateTrafficMessage)
         .filter(Boolean)
         .filter(msg => {
           const normalized = normalizeRemarkText(msg);
@@ -170,7 +230,7 @@
         .filter((msg, index, arr) => arr.findIndex(x => normalizeRemarkText(x) === normalizeRemarkText(msg)) === index);
     }
 
-    async function fetchWithRetry(url, retries = 2) {
+    async function fetchWithRetry(url, retries = 0) {
       let lastError;
       for (let i = 0; i <= retries; i++) {
         const controller = new AbortController();
@@ -182,7 +242,9 @@
           lastError = new Error(`HTTP ${res.status}`);
         } catch (e) {
           clearTimeout(timeout);
-          lastError = e;
+          lastError = (e && e.name === "AbortError")
+            ? new Error("Zeitlimit beim Abruf überschritten")
+            : e;
         }
       }
       throw lastError || new Error("Netzwerkfehler");
@@ -248,6 +310,8 @@
         const line = escapeHtml(dep?.line?.name || "-");
         const direction = escapeHtml(dep?.direction || "-");
         const time = escapeHtml(formatTime(dep?.when || dep?.plannedWhen));
+        const scheduleStatus = getScheduleStatus(dep);
+        const scheduleStatusHtml = ` <span class="schedule-status ${scheduleStatus.type}">${escapeHtml(scheduleStatus.label)}</span>`;
         const trafficMessages = getTrafficMessages(dep)
           .map(msg => escapeHtml(msg))
           .join(" &middot; ");
@@ -255,7 +319,7 @@
           ? ` <span class="remark">&#x26A0;&#xFE0F; ${trafficMessages}</span>`
           : "";
 
-        return `<span class="item"><span class="line-name">${line}</span> <span class="direction">&rarr; ${direction}</span> <span class="time">${time} Uhr</span>${remarksHtml}</span>`;
+        return `<span class="item"><span class="line-name">${line}</span> <span class="direction">&rarr; ${direction}</span> <span class="time">${time} Uhr</span>${scheduleStatusHtml}${remarksHtml}</span>`;
       });
 
       const html = items.join('<span class="sep">&middot;</span>');
@@ -268,11 +332,14 @@
       const duration = Math.max(20, Math.min(90, Math.round(plainLength / 3.5)));
       const track = document.getElementById("tickerTrack");
       track.style.setProperty("--ticker-duration", `${duration}s`);
+      hasRenderedData = true;
     }
 
     async function load() {
       const ticker = document.getElementById("ticker");
-      ticker.innerHTML = `<div class="meta">Lade Abfahrten &hellip;</div>`;
+      if (!hasRenderedData) {
+        ticker.innerHTML = `<div class="meta">Lade Abfahrten &hellip;</div>`;
+      }
 
       try {
         const deps = await fetchDepartures();
@@ -285,7 +352,9 @@
 
         renderTicker(filtered);
       } catch (e) {
-        ticker.innerHTML = `<div class="err">${escapeHtml(e?.message || "Unbekannter Fehler")}</div>`;
+        if (!hasRenderedData) {
+          ticker.innerHTML = `<div class="err">${escapeHtml(e?.message || "Unbekannter Fehler")}</div>`;
+        }
       }
     }
 
