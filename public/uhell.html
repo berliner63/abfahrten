@@ -138,7 +138,8 @@
     const API_BASES = ["https://v6.bvg.transport.rest", "https://v6.vbb.transport.rest"];
     const MAX_RESULTS = 5;
     const REFRESH_MS = 60000;
-    const REQUEST_TIMEOUT_MS = 12000;
+    const REQUEST_TIMEOUT_MS = 7000;
+    let hasRenderedData = false;
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -228,7 +229,7 @@
         .filter((msg, index, arr) => arr.findIndex(x => normalizeRemarkText(x) === normalizeRemarkText(msg)) === index);
     }
 
-    async function fetchWithRetry(url, retries = 2) {
+    async function fetchWithRetry(url, retries = 0) {
       let lastError;
       for (let i = 0; i <= retries; i++) {
         const controller = new AbortController();
@@ -240,7 +241,9 @@
           lastError = new Error(`HTTP ${res.status}`);
         } catch (e) {
           clearTimeout(timeout);
-          lastError = e;
+          lastError = (e && e.name === "AbortError")
+            ? new Error("Zeitlimit beim Abruf überschritten")
+            : e;
         }
       }
       throw lastError || new Error("Netzwerkfehler");
@@ -279,6 +282,7 @@
 
       if (!deps.length) {
         ticker.innerHTML = `<div class="meta">Keine Abfahrten gefunden.</div>`;
+        hasRenderedData = false;
         return;
       }
 
@@ -308,17 +312,22 @@
       const duration = Math.max(20, Math.min(90, Math.round(plainLength / 3.5)));
       const track = document.getElementById("tickerTrack");
       track.style.setProperty("--ticker-duration", `${duration}s`);
+      hasRenderedData = true;
     }
 
     async function load() {
       const ticker = document.getElementById("ticker");
-      ticker.innerHTML = `<div class="meta">Lade Abfahrten &hellip;</div>`;
+      if (!hasRenderedData) {
+        ticker.innerHTML = `<div class="meta">Lade Abfahrten &hellip;</div>`;
+      }
 
       try {
         const deps = await fetchDepartures();
         renderTicker(deps.slice(0, MAX_RESULTS));
       } catch (e) {
-        ticker.innerHTML = `<div class="err">${escapeHtml(e?.message || "Unbekannter Fehler")}</div>`;
+        if (!hasRenderedData) {
+          ticker.innerHTML = `<div class="err">${escapeHtml(e?.message || "Unbekannter Fehler")}</div>`;
+        }
       }
     }
 
