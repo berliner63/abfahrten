@@ -323,11 +323,11 @@
     });
   </script>
   <script>
-    const PAGE_VERSION = 'v2026-05-18-03';
+    const PAGE_VERSION = 'v2026-05-18-04';
     const PAGE_CHANGED_AT_FALLBACK = '2026-03-18T23:10:00+01:00';
     const API_BASES = [
-      'https://v6.bvg.transport.rest',
       'https://v6.vbb.transport.rest',
+      'https://v6.bvg.transport.rest',
       'https://v6.db.transport.rest'
     ];
     const REQUEST_TIMEOUT_MS = 9000;
@@ -405,17 +405,20 @@
     }
 
     function departureKey(dep) {
-      const lineName = dep && dep.line && dep.line.name ? dep.line.name : '';
-      const direction = dep && dep.direction ? cleanDisplayName(dep.direction) : '';
-      const planned = dep && dep.plannedWhen ? dep.plannedWhen : '';
-      const actual = dep && (dep.prognosedWhen || dep.when) ? (dep.prognosedWhen || dep.when) : '';
-      const platform = dep && dep.platform ? String(dep.platform) : '';
+      if (!dep) return '';
+      const lineName = (dep.line && dep.line.name) ? String(dep.line.name) : '';
+      const directionVal = dep.direction || '';
+      const directionStr = typeof directionVal === 'string' ? directionVal : (directionVal.name || String(directionVal));
+      const direction = cleanDisplayName(directionStr);
+      const planned = dep.plannedWhen ? String(dep.plannedWhen) : '';
+      const actual = (dep.prognosedWhen || dep.when) ? String(dep.prognosedWhen || dep.when) : '';
+      const tripId = dep.tripId ? String(dep.tripId) : '';
 
-      if (dep && dep.tripId) {
-        return `trip:${dep.tripId}|planned:${planned}|actual:${actual}`;
+      if (tripId) {
+        return `trip:${tripId}|planned:${planned}|actual:${actual}`;
       }
 
-      return `line:${lineName}|dir:${direction}|planned:${planned}|actual:${actual}|platform:${platform}`;
+      return `line:${lineName}|dir:${direction}|planned:${planned}|actual:${actual}`;
     }
 
     function dedupeDepartures(list) {
