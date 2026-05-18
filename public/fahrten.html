@@ -323,7 +323,7 @@
     });
   </script>
   <script>
-    const PAGE_VERSION = 'v2026-05-18-02';
+    const PAGE_VERSION = 'v2026-05-18-03';
     const PAGE_CHANGED_AT_FALLBACK = '2026-03-18T23:10:00+01:00';
     const API_BASES = [
       'https://v6.bvg.transport.rest',
@@ -402,6 +402,35 @@
       if (Array.isArray(data)) return data;
       if (data && Array.isArray(data.departures)) return data.departures;
       return [];
+    }
+
+    function departureKey(dep) {
+      const lineName = dep && dep.line && dep.line.name ? dep.line.name : '';
+      const direction = dep && dep.direction ? cleanDisplayName(dep.direction) : '';
+      const planned = dep && dep.plannedWhen ? dep.plannedWhen : '';
+      const actual = dep && (dep.prognosedWhen || dep.when) ? (dep.prognosedWhen || dep.when) : '';
+      const platform = dep && dep.platform ? String(dep.platform) : '';
+
+      if (dep && dep.tripId) {
+        return `trip:${dep.tripId}|planned:${planned}|actual:${actual}`;
+      }
+
+      return `line:${lineName}|dir:${direction}|planned:${planned}|actual:${actual}|platform:${platform}`;
+    }
+
+    function dedupeDepartures(list) {
+      const seen = new Set();
+      const result = [];
+
+      list.forEach((dep) => {
+        const key = departureKey(dep);
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.push(dep);
+        }
+      });
+
+      return result;
     }
 
     async function fetchJsonWithTimeout(url, timeoutMs) {
@@ -582,7 +611,7 @@
           return;
         }
 
-        const rows = depList.slice(0, 11);
+        const rows = dedupeDepartures(depList).slice(0, 11);
         renderRows(rows);
         saveDeparturesToCache(selectedStopId, selectedStopName, rows, departureResult.base);
         if (departureResult.usedFallback) {
