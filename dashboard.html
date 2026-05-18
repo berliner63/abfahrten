@@ -48,6 +48,31 @@ setTimeout(() => {
 }, 10 * 60 * 1000);
 </script>
 
+<!-- Wake Lock: Bildschirm wach halten -->
+<script>
+let wakeLock = null;
+
+async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+            setTimeout(requestWakeLock, 1000);
+        });
+    } catch (err) {
+        console.warn('Wake Lock fehlgeschlagen:', err);
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        requestWakeLock();
+    }
+});
+
+requestWakeLock();
+</script>
+
 </head>
 
 <body>

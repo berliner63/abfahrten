@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Vergleich U Tierpark - VBB vs BVG</title>
+  <style>
+    :root {
+      --bg: #0d1b2a;
+      --card: #1b263b;
+      --muted: #8ea3b8;
+      --text: #e0e1dd;
+      --accent: #00d4ff;
+      --ok: #50fa7b;
+      --warn: #ffb703;
+      --err: #ff4d6d;
+      --grid: #2b3a55;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top right, #1f4068 0%, var(--bg) 55%);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .panel {
+      width: min(980px, 100%);
+      background: linear-gradient(180deg, rgba(27, 38, 59, 0.95), rgba(27, 38, 59, 0.85));
+      border: 1px solid #31486b;
+      border-radius: 14px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 18px 20px;
+      border-bottom: 1px solid #31486b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 1.2rem;
+      letter-spacing: 0.2px;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.92rem;
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .status-ok { color: var(--ok); }
+    .status-warn { color: var(--warn); }
+    .status-err { color: var(--err); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      text-align: left;
+      font-weight: 600;
+      color: #b8d1ea;
+      background: rgba(16, 30, 48, 0.8);
+      border-bottom: 1px solid var(--grid);
+      padding: 12px 14px;
+      font-size: 0.95rem;
+    }
+
+    tbody td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--grid);
+      font-size: 0.98rem;
+      vertical-align: top;
+    }
+
+    tbody tr:nth-child(odd) {
+      background: rgba(19, 32, 52, 0.55);
+    }
+
+    .mono { font-variant-numeric: tabular-nums; font-family: Consolas, "Courier New", monospace; }
+    .small { color: var(--muted); font-size: 0.85rem; }
+
+    @media (max-width: 760px) {
+      thead th:nth-child(2),
+      tbody td:nth-child(2) {
+        display: none;
+      }
+
+      .title {
+        font-size: 1.05rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="panel" aria-live="polite">
+    <header class="header">
+      <h1 class="title">U Tierpark - Soll / Ist Vergleich (VBB vs BVG)</h1>
+      <div class="meta">
+        <span>Auto-Refresh: 60s</span>
+        <span id="lastUpdate">Letztes Update: -</span>
+        <span id="status" class="status-warn">Status: Lade Daten...</span>
+      </div>
+    </header>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Linie</th>
+          <th>Richtung</th>
+          <th>Soll-Zeit</th>
+          <th>Ist-Zeit (VBB)</th>
+          <th>Ist-Zeit (BVG)</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="5" class="small">Lade Abfahrten...</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <script>
+    const STOP_ID = "900161002"; // U Tierpark (Berlin)
+    const VBB_BASE = "https://v6.vbb.transport.rest";
+    const BVG_BASE = "https://v6.bvg.transport.rest";
+    const REFRESH_MS = 60000;
+
+    function formatTime(iso) {
+      if (!iso) return "-";
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return "-";
+      return date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function setStatus(text, cls) {
+      const el = document.getElementById("status");
+      el.textContent = "Status: " + text;
+      el.className = cls;
+    }
+
+    async function fetchDepartures(base) {
+      const url = `${base}/stops/${STOP_ID}/departures?duration=60&results=25&language=de&remarks=false&_=${Date.now()}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    function keyOf(dep) {
+      const line = dep?.line?.name || "";
+      const direction = dep?.direction || "";
+      const planned = dep?.plannedWhen || "";
+      return `${line}||${direction}||${planned}`;
+    }
+
+    function normalize(dep) {
+      return {
+        line: dep?.line?.name || "-",
+        direction: dep?.direction || "-",
+        plannedWhen: dep?.plannedWhen || null,
+        when: dep?.when || null
+      };
+    }
+
+    function mergeTopFive(vbbData, bvgData) {
+      const vMap = new Map(vbbData.map((d) => [keyOf(d), normalize(d)]));
+      const bMap = new Map(bvgData.map((d) => [keyOf(d), normalize(d)]));
+      const keys = new Set([...vMap.keys(), ...bMap.keys()]);
+
+      const merged = [];
+      for (const key of keys) {
+        const v = vMap.get(key);
+        const b = bMap.get(key);
+        const sample = v || b;
+        merged.push({
+          line: sample?.line || "-",
+          direction: sample?.direction || "-",
+          plannedWhen: sample?.plannedWhen || null,
+          vbbWhen: v?.when || null,
+          bvgWhen: b?.when || null
+        });
+      }
+
+      merged.sort((a, b) => {
+        const ta = a.plannedWhen ? Date.parse(a.plannedWhen) : Number.MAX_SAFE_INTEGER;
+        const tb = b.plannedWhen ? Date.parse(b.plannedWhen) : Number.MAX_SAFE_INTEGER;
+        return ta - tb;
+      });
+
+      return merged.slice(0, 5);
+    }
+
+    function render(rows) {
+      const body = document.getElementById("rows");
+
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="5" class="small">Keine Abfahrten gefunden.</td></tr>';
+        return;
+      }
+
+      body.innerHTML = rows.map((row) => {
+        return `
+          <tr>
+            <td><strong>${escapeHtml(row.line)}</strong></td>
+            <td>${escapeHtml(row.direction)}</td>
+            <td class="mono">${formatTime(row.plannedWhen)}</td>
+            <td class="mono">${formatTime(row.vbbWhen)}</td>
+            <td class="mono">${formatTime(row.bvgWhen)}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function loadAndRender() {
+      try {
+        const [vbb, bvg] = await Promise.all([
+          fetchDepartures(VBB_BASE),
+          fetchDepartures(BVG_BASE)
+        ]);
+
+        render(mergeTopFive(vbb, bvg));
+        setStatus("OK", "status-ok");
+      } catch (error) {
+        setStatus(`Fehler (${escapeHtml(error.message)})`, "status-err");
+        document.getElementById("rows").innerHTML =
+          '<tr><td colspan="5" class="small">Abruf fehlgeschlagen. Nächster Versuch in 60s.</td></tr>';
+      } finally {
+        document.getElementById("lastUpdate").textContent =
+          "Letztes Update: " + new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      }
+    }
+
+    loadAndRender();
+    setInterval(loadAndRender, REFRESH_MS);
+  </script>
+</body>
+</html>

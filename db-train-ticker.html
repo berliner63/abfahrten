@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>DB Zug-Ticker</title>
+  <style>
+    :root {
+      --bg: #060606;
+      --panel: #121212;
+      --line: #242424;
+      --text: #ffffff;
+      --muted: #bdbdbd;
+      --accent: #ffce54;
+      --error: #ff9d9d;
+      --radius: 10px;
+      --fs-ticker: 24px;
+      --ticker-duration: 36s;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 20% 0%, #181818 0%, var(--bg) 46%);
+      color: var(--text);
+      font-family: "Roboto Condensed", Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+    }
+
+    .ticker-shell {
+      width: 100%;
+      max-width: 1480px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 14px #0009;
+      overflow: hidden;
+    }
+
+    .ticker {
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 6px 0;
+      font-size: var(--fs-ticker);
+      line-height: 1.1;
+    }
+
+    .ticker-label {
+      flex-shrink: 0;
+      padding: 0 16px;
+      font-weight: 700;
+      font-size: var(--fs-ticker);
+      color: var(--accent);
+      letter-spacing: 0.03em;
+      border-right: 2px solid var(--line);
+      margin-right: 4px;
+      text-transform: uppercase;
+    }
+
+    .ticker-track {
+      display: inline-flex;
+      align-items: center;
+      width: max-content;
+      animation: ticker-scroll var(--ticker-duration) linear infinite;
+      will-change: transform;
+    }
+
+    .ticker-chunk {
+      display: inline-flex;
+      align-items: center;
+      padding-right: 52px;
+    }
+
+    .item {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .line-name { color: #ffffff; }
+    .direction { color: #dfdfdf; font-weight: 400; }
+    .time { color: #ffffff; }
+    .delay { color: var(--accent); font-weight: 700; }
+
+    .sep {
+      color: var(--muted);
+      padding: 0 16px;
+      font-weight: 400;
+    }
+
+    .meta, .err {
+      width: 100%;
+      text-align: center;
+      padding: 0 12px;
+    }
+
+    .meta { color: var(--muted); }
+    .err { color: var(--error); }
+
+    @keyframes ticker-scroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+  </style>
+</head>
+<body>
+  <main class="ticker-shell" aria-live="polite">
+    <div class="ticker">
+      <span class="ticker-label" id="tickerLabel">DB</span>
+      <div id="ticker" style="overflow:hidden;display:inline-flex;align-items:center;flex:1;min-width:0;">
+        <div class="meta">Lade Zugdaten ...</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const API_BASE = "https://v6.db.transport.rest";
+    const REQUEST_TIMEOUT_MS = 12000;
+
+    const params = new URLSearchParams(window.location.search);
+    const CONFIG = {
+      stopId: (params.get("stopId") || "").trim(),
+      station: (params.get("station") || "Berlin Hbf").trim(),
+      line: (params.get("line") || "").trim(),
+      tripId: (params.get("tripId") || "").trim(),
+      direction: (params.get("direction") || "").trim(),
+      max: clampInt(params.get("max"), 1, 12, 6),
+      duration: clampInt(params.get("duration"), 15, 180, 90),
+      refreshSec: clampInt(params.get("refreshSec"), 15, 300, 60)
+    };
+
+    function clampInt(value, min, max, fallback) {
+      const parsed = parseInt(value, 10);
+      if (Number.isNaN(parsed)) return fallback;
+      return Math.max(min, Math.min(max, parsed));
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function normalizeText(value) {
+      return String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function formatTime(iso) {
+      if (!iso) return "--:--";
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return "--:--";
+      return date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function computeDelayMinutes(dep) {
+      const when = dep?.when ? new Date(dep.when).getTime() : NaN;
+      const plannedWhen = dep?.plannedWhen ? new Date(dep.plannedWhen).getTime() : NaN;
+      if (!Number.isNaN(when) && !Number.isNaN(plannedWhen)) {
+        return Math.round((when - plannedWhen) / 60000);
+      }
+      const rawDelay = Number(dep?.delay);
+      if (!Number.isFinite(rawDelay)) return 0;
+      if (Math.abs(rawDelay) > 100) return Math.round(rawDelay / 60);
+      return Math.round(rawDelay);
+    }
+
+    async function fetchJson(url) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return await response.json();
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    async function resolveStopId() {
+      if (CONFIG.stopId) return { id: CONFIG.stopId, name: CONFIG.station || CONFIG.stopId };
+
+      const url = API_BASE
+        + "/locations?query=" + encodeURIComponent(CONFIG.station)
+        + "&results=5&stops=true&addresses=false&poi=false&language=de";
+
+      const data = await fetchJson(url);
+      const list = Array.isArray(data) ? data : [];
+      const stop = list.find(item => item && item.id && (item.type === "stop" || item.type === "station"));
+      if (!stop) throw new Error("Keine passende Station gefunden: " + CONFIG.station);
+      return { id: String(stop.id), name: stop.name || CONFIG.station };
+    }
+
+    async function fetchDepartures(stopId) {
+      const url = API_BASE
+        + "/stops/" + encodeURIComponent(stopId)
+        + "/departures?duration=" + CONFIG.duration
+        + "&results=60&language=de";
+
+      const data = await fetchJson(url);
+      if (Array.isArray(data?.departures)) return data.departures;
+      if (Array.isArray(data)) return data;
+      return [];
+    }
+
+    function filterForConfiguredTrain(departures) {
+      const byTripId = CONFIG.tripId ? normalizeText(CONFIG.tripId) : "";
+      const byLine = CONFIG.line ? normalizeText(CONFIG.line) : "";
+      const byDirection = CONFIG.direction ? normalizeText(CONFIG.direction) : "";
+
+      return departures
+        .filter(dep => dep && dep.line)
+        .filter(dep => {
+          if (byTripId && normalizeText(dep.tripId) !== byTripId) return false;
+          if (byLine && !normalizeText(dep.line.name).includes(byLine)) return false;
+          if (byDirection && !normalizeText(dep.direction).includes(byDirection)) return false;
+          return true;
+        })
+        .slice(0, CONFIG.max);
+    }
+
+    function renderTicker(items, stationName) {
+      const ticker = document.getElementById("ticker");
+      const label = document.getElementById("tickerLabel");
+
+      const labelParts = ["DB", stationName];
+      if (CONFIG.line) labelParts.push(CONFIG.line);
+      label.textContent = labelParts.join(" | ");
+
+      if (!items.length) {
+        ticker.innerHTML = "<div class=\"meta\">Keine passenden Abfahrten gefunden.</div>";
+        return;
+      }
+
+      const chunks = items.map(dep => {
+        const line = escapeHtml(dep?.line?.name || "-");
+        const direction = escapeHtml(dep?.direction || "-");
+        const time = escapeHtml(formatTime(dep?.when || dep?.plannedWhen));
+        const delay = computeDelayMinutes(dep);
+        const delayHtml = delay > 0
+          ? " <span class=\"delay\">+" + escapeHtml(String(delay)) + " min</span>"
+          : "";
+
+        return "<span class=\"item\">"
+          + "<span class=\"line-name\">" + line + "</span>"
+          + " <span class=\"direction\">-> " + direction + "</span>"
+          + " <span class=\"time\">" + time + " Uhr</span>"
+          + delayHtml
+          + "</span>";
+      });
+
+      const html = chunks.join('<span class="sep">&middot;</span>');
+      ticker.innerHTML = "<div class=\"ticker-track\" id=\"tickerTrack\"><div class=\"ticker-chunk\">"
+        + html
+        + "</div><div class=\"ticker-chunk\" aria-hidden=\"true\">"
+        + html
+        + "</div></div>";
+
+      const plainLength = items
+        .map(dep => (dep?.line?.name || "") + " " + (dep?.direction || "") + " " + formatTime(dep?.when || dep?.plannedWhen))
+        .join(" ")
+        .length;
+      const duration = Math.max(20, Math.min(120, Math.round(plainLength / 3.2)));
+      const track = document.getElementById("tickerTrack");
+      if (track) track.style.setProperty("--ticker-duration", duration + "s");
+    }
+
+    async function loadData() {
+      const ticker = document.getElementById("ticker");
+      ticker.innerHTML = "<div class=\"meta\">Lade Zugdaten ...</div>";
+
+      try {
+        const stop = await resolveStopId();
+        const departures = await fetchDepartures(stop.id);
+        const filtered = filterForConfiguredTrain(departures);
+        renderTicker(filtered, stop.name || stop.id);
+      } catch (error) {
+        ticker.innerHTML = "<div class=\"err\">" + escapeHtml(error?.message || "Unbekannter Fehler") + "</div>";
+      }
+    }
+
+    loadData();
+    setInterval(loadData, CONFIG.refreshSec * 1000);
+  </script>
+</body>
+</html>
