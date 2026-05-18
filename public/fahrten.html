@@ -323,7 +323,7 @@
     });
   </script>
   <script>
-    const PAGE_VERSION = 'v2026-05-18-04';
+    const PAGE_VERSION = 'v2026-05-18-05';
     const PAGE_CHANGED_AT_FALLBACK = '2026-03-18T23:10:00+01:00';
     const API_BASES = [
       'https://v6.vbb.transport.rest',
@@ -641,7 +641,7 @@
       tbody.innerHTML = '';
       depList.slice(0, 11).forEach(dep => {
         const plannedIso = dep.plannedWhen || null;
-        const actualIso = dep.prognosedWhen || dep.when || plannedIso;
+        const actualIso = dep.prognosedWhen || dep.when || null;
         const planned = plannedIso ? new Date(plannedIso) : null;
         const actual = actualIso ? new Date(actualIso) : null;
         const istText = actualIso ? formatTime(actualIso) : '';
