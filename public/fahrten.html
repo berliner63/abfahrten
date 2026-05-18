@@ -323,7 +323,7 @@
     });
   </script>
   <script>
-    const PAGE_VERSION = 'v2026-03-18-02';
+    const PAGE_VERSION = 'v2026-05-18-01';
     const PAGE_CHANGED_AT_FALLBACK = '2026-03-18T23:10:00+01:00';
     const API_BASES = [
       'https://v6.bvg.transport.rest',
@@ -608,26 +608,35 @@
       const tbody = document.getElementById('departures');
       tbody.innerHTML = '';
       depList.slice(0, 11).forEach(dep => {
-        // Ist-Zeit und Klasse berechnen
-        let planned = dep.plannedWhen ? new Date(dep.plannedWhen) : null;
-        let actual = dep.when ? new Date(dep.when) : null;
-        let istText = actual ? formatTime(dep.when) : (planned ? formatTime(dep.plannedWhen) : '');
+        const plannedIso = dep.plannedWhen || null;
+        const actualIso = dep.prognosedWhen || dep.when || plannedIso;
+        const planned = plannedIso ? new Date(plannedIso) : null;
+        const actual = actualIso ? new Date(actualIso) : null;
+        const istText = actualIso ? formatTime(actualIso) : '';
+
+        let diffMinutes = null;
+        if (typeof dep.delay === 'number' && Number.isFinite(dep.delay)) {
+          diffMinutes = Math.round(dep.delay / 60);
+        } else if (planned && actual) {
+          diffMinutes = Math.round((actual - planned) / 60000);
+        }
+
         let istClass = '';
-        if (planned && actual) {
-          const diff = Math.round((actual - planned) / 60000);
-          if (diff < 0) {
+        if (diffMinutes !== null) {
+          if (diffMinutes < 0) {
             istClass = 'abweichung-zu-frueh';
-          } else if (diff > 0) {
+          } else if (diffMinutes > 0) {
             istClass = 'abweichung-zu-spaet';
           } else {
             istClass = 'abweichung-puenktlich';
           }
         }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${dep.line && dep.line.name ? dep.line.name : ''}</td>
           <td>${cleanDisplayName(dep.direction || '').replace(/->/g, '>')}</td>
-          <td>${dep.plannedWhen ? formatTime(dep.plannedWhen) : ''}</td>
+          <td>${plannedIso ? formatTime(plannedIso) : ''}</td>
           <td><span class="${istClass}">${istText}</span></td>
         `;
         tbody.appendChild(tr);
