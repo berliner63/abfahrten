@@ -323,7 +323,7 @@
     });
   </script>
   <script>
-    const PAGE_VERSION = 'v2026-05-18-05';
+    const PAGE_VERSION = 'v2026-05-18-06';
     const PAGE_CHANGED_AT_FALLBACK = '2026-03-18T23:10:00+01:00';
     const API_BASES = [
       'https://v6.vbb.transport.rest',
@@ -646,10 +646,7 @@
         const actual = actualIso ? new Date(actualIso) : null;
         const istText = actualIso ? formatTime(actualIso) : '';
 
-        const hasRealtime =
-          (typeof dep.delay === 'number' && Number.isFinite(dep.delay)) ||
-          Boolean(dep.prognosedWhen) ||
-          (Boolean(dep.when) && Boolean(dep.plannedWhen) && dep.when !== dep.plannedWhen);
+        const hasRealtime = Boolean(actualIso);
 
         let diffMinutes = null;
         if (!hasRealtime) {
