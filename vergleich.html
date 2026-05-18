@@ -187,7 +187,9 @@
         }
 
         const data = await response.json();
-        return Array.isArray(data) ? data : [];
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data?.departures)) return data.departures;
+        return [];
       } finally {
         clearTimeout(timeout);
       }
