@@ -323,7 +323,7 @@
     });
   </script>
   <script>
-    const PAGE_VERSION = 'v2026-05-18-06';
+    const PAGE_VERSION = 'v2026-05-18-07';
     const PAGE_CHANGED_AT_FALLBACK = '2026-03-18T23:10:00+01:00';
     const API_BASES = [
       'https://v6.vbb.transport.rest',
@@ -413,12 +413,14 @@
       const planned = dep.plannedWhen ? String(dep.plannedWhen) : '';
       const actual = (dep.prognosedWhen || dep.when) ? String(dep.prognosedWhen || dep.when) : '';
       const tripId = dep.tripId ? String(dep.tripId) : '';
+      const platform = dep.platform ? String(dep.platform) : '';
+      const plannedPlatform = dep.plannedPlatform ? String(dep.plannedPlatform) : '';
 
       if (tripId) {
         return `trip:${tripId}|planned:${planned}|actual:${actual}`;
       }
 
-      return `line:${lineName}|dir:${direction}|planned:${planned}|actual:${actual}`;
+      return `line:${lineName}|dir:${direction}|planned:${planned}|actual:${actual}|platform:${platform}|planPlatform:${plannedPlatform}`;
     }
 
     function dedupeDepartures(list) {
