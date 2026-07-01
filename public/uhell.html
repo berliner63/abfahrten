@@ -138,7 +138,9 @@
     const API_BASES = ["https://v6.vbb.transport.rest", "https://v6.bvg.transport.rest"];
     const MAX_RESULTS = 5;
     const REFRESH_MS = 60000;
-    const REQUEST_TIMEOUT_MS = 7000;
+    const REQUEST_TIMEOUT_MS = 15000;
+    const RETRY_ATTEMPTS = 1;
+    const RETRY_BACKOFF_MS = 500;
     let hasRenderedData = false;
 
     function escapeHtml(value) {
@@ -193,6 +195,10 @@
       return Math.round(delay);
     }
 
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     function getScheduleStatus(dep) {
       const planned = parseIsoDate(dep?.plannedWhen);
       const actual = parseIsoDate(dep?.when);
@@ -229,7 +235,7 @@
         .filter((msg, index, arr) => arr.findIndex(x => normalizeRemarkText(x) === normalizeRemarkText(msg)) === index);
     }
 
-    async function fetchWithRetry(url, retries = 0) {
+    async function fetchWithRetry(url, retries = RETRY_ATTEMPTS) {
       let lastError;
       for (let i = 0; i <= retries; i++) {
         const controller = new AbortController();
@@ -244,6 +250,10 @@
           lastError = (e && e.name === "AbortError")
             ? new Error("Zeitlimit beim Abruf überschritten")
             : e;
+        }
+
+        if (i < retries) {
+          await sleep(RETRY_BACKOFF_MS * (i + 1));
         }
       }
       throw lastError || new Error("Netzwerkfehler");
