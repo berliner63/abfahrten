@@ -171,27 +171,6 @@
     .stop-suggestion-item.active {
       background: #1b1b1b;
     }
-    .orientation-hint {
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      z-index: 1000;
-      max-width: calc(100vw - 32px);
-      padding: 10px 14px;
-      border: 1px solid #f9a825;
-      background: rgba(17, 17, 17, 0.96);
-      color: #ffd54f;
-      font-size: calc(15px * var(--font-scale));
-      line-height: 1.35;
-      text-align: center;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-    }
-    .orientation-hint.visible {
-      opacity: 1;
-    }
     button {
       font-family: 'Roboto Condensed', sans-serif;
       font-size: calc(14px * var(--font-scale));
@@ -414,8 +393,6 @@
       </div>
     </div>
 
-    <div id="orientationHint" class="orientation-hint">Auf Mobilgeräten bitte Queransicht verwenden.</div>
-
     <div class="table-section">
       <table>
         <thead>
@@ -474,7 +451,6 @@
 
     let autoEnabled = true;
     let autoTimer = null;
-    let orientationHintTimer = null;
     let selectedStop = null;
     let stationSearchTimer = null;
     let lastStopCandidates = [];
@@ -551,38 +527,6 @@
         .replace(/\s*\(Berlin\)\s*/gi, ' ')
         .replace(/\s{2,}/g, ' ')
         .trim() || '-';
-    }
-
-    function isMobilePortrait() {
-      const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
-      const narrowScreen = window.innerWidth <= 1024;
-      return coarsePointer && narrowScreen && window.innerHeight > window.innerWidth;
-    }
-
-    function hideOrientationHint() {
-      const hint = document.getElementById('orientationHint');
-      hint.classList.remove('visible');
-      if (orientationHintTimer) {
-        clearTimeout(orientationHintTimer);
-        orientationHintTimer = null;
-      }
-    }
-
-    function updateOrientationHint() {
-      const hint = document.getElementById('orientationHint');
-      if (!isMobilePortrait()) {
-        hideOrientationHint();
-        return;
-      }
-
-      hint.classList.add('visible');
-      if (orientationHintTimer) {
-        clearTimeout(orientationHintTimer);
-      }
-      orientationHintTimer = setTimeout(() => {
-        hint.classList.remove('visible');
-        orientationHintTimer = null;
-      }, 10000);
     }
 
     async function fetchFromBases(path, params) {
@@ -891,10 +835,6 @@
       }
     });
 
-    window.addEventListener('resize', updateOrientationHint);
-    window.addEventListener('orientationchange', updateOrientationHint);
-
-    updateOrientationHint();
     autoTimer = setInterval(loadDepartures, 60000);
 
     const storedStop = getStoredSelectedStop();
