@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Tram-Abfahrten nach Haltestelle</title>
+  <title>Abfahrten nach Haltestelle</title>
   <link rel="icon" type="image/png" href="./logo.png">
   <link rel="shortcut icon" href="./logo.png">
   <link rel="apple-touch-icon" href="./logo.png">
@@ -59,6 +59,7 @@
       flex-wrap: wrap;
       align-items: center;
       margin-bottom: 10px;
+      position: relative;
     }
     .stop-picker label {
       font-size: 14px;
@@ -77,6 +78,38 @@
     }
     .stop-picker input::placeholder {
       color: #888;
+    }
+    .stop-suggestions {
+      display: none;
+      width: 100%;
+      max-height: 260px;
+      overflow-y: auto;
+      border: 1px solid #333;
+      background: #111;
+      margin-top: -1px;
+      z-index: 20;
+    }
+    .stop-suggestions.visible {
+      display: block;
+    }
+    .stop-suggestion-item {
+      width: 100%;
+      text-align: left;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-bottom: 1px solid #222;
+      padding: 8px 10px;
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .stop-suggestion-item:last-child {
+      border-bottom: none;
+    }
+    .stop-suggestion-item:hover,
+    .stop-suggestion-item.active {
+      background: #1b1b1b;
     }
     .orientation-hint {
       position: fixed;
@@ -284,8 +317,8 @@
 <body>
   <div class="wrap">
     <div class="header-line">
-      <h1>Tram-Abfahrten nach Haltestelle</h1>
-      <div class="sub">Live-Übersicht der nächsten Tram-Abfahrten für eine ausgewählte Haltestelle.</div>
+      <h1>Abfahrten nach Haltestelle</h1>
+      <div class="sub">Live-Übersicht der nächsten Abfahrten für eine ausgewählte Haltestelle.</div>
     </div>
 
     <div class="panel">
@@ -295,6 +328,7 @@
         <datalist id="stopOptions"></datalist>
         <button id="selectStopBtn" type="button">Haltestelle setzen</button>
       </div>
+      <div id="stopSuggestions" class="stop-suggestions"></div>
       <div class="controls">
         <button id="refreshBtn" type="button">Jetzt aktualisieren</button>
         <button id="toggleAutoBtn" type="button">Auto: an</button>
@@ -369,6 +403,7 @@
     let selectedStop = null;
     let stationSearchTimer = null;
     let lastStopCandidates = [];
+    let activeSuggestionIndex = -1;
 
     function openImpressum() {
       document.getElementById('impressumModal').classList.add('visible');
@@ -452,9 +487,45 @@
       list.innerHTML = stops.map((stop) => {
         const label = cleanDisplayName(stop.name || 'Unbenannte Haltestelle');
         const id = String(stop.id || '').replace(/"/g, '');
-        const productSuffix = stop.products && stop.products.tram ? ' (Tram)' : '';
-        return '<option value="' + label + '" data-stop-id="' + id + '">' + label + productSuffix + '</option>';
+        return '<option value="' + label + '" data-stop-id="' + id + '">' + label + '</option>';
       }).join('');
+    }
+
+    function hideSuggestions() {
+      const el = document.getElementById('stopSuggestions');
+      el.classList.remove('visible');
+      activeSuggestionIndex = -1;
+    }
+
+    function renderSuggestions(stops) {
+      const el = document.getElementById('stopSuggestions');
+      if (!stops.length) {
+        el.innerHTML = '';
+        hideSuggestions();
+        return;
+      }
+
+      el.innerHTML = stops.slice(0, 12).map((stop, index) => {
+        const name = cleanDisplayName(stop.name || 'Unbenannte Haltestelle');
+        const cls = index === activeSuggestionIndex ? 'stop-suggestion-item active' : 'stop-suggestion-item';
+        return '<button class="' + cls + '" type="button" data-index="' + index + '">' + name + '</button>';
+      }).join('');
+
+      el.classList.add('visible');
+    }
+
+    function setActiveSuggestion(index) {
+      const max = Math.min(lastStopCandidates.length, 12) - 1;
+      if (max < 0) {
+        activeSuggestionIndex = -1;
+      } else if (index < 0) {
+        activeSuggestionIndex = max;
+      } else if (index > max) {
+        activeSuggestionIndex = 0;
+      } else {
+        activeSuggestionIndex = index;
+      }
+      renderSuggestions(lastStopCandidates);
     }
 
     async function searchStops(query) {
@@ -462,6 +533,7 @@
       if (term.length < 2) {
         lastStopCandidates = [];
         renderStopOptions([]);
+        renderSuggestions([]);
         return;
       }
 
@@ -478,7 +550,6 @@
 
         const candidates = (Array.isArray(data) ? data : [])
           .filter((item) => item && item.type === 'stop' && item.id)
-          .filter((item) => item.products && item.products.tram)
           .map((item) => ({
             id: String(item.id),
             name: cleanDisplayName(item.name),
@@ -493,6 +564,7 @@
         });
 
         renderStopOptions(lastStopCandidates);
+        renderSuggestions(lastStopCandidates);
       } catch (e) {
         setStatus('Haltestellensuche fehlgeschlagen: ' + e.message, 'err');
       }
@@ -514,7 +586,7 @@
 
     function normalizeDepartureRows(departures) {
       return departures
-        .filter((dep) => dep && dep.line && dep.line.product === 'tram')
+        .filter((dep) => dep && dep.line)
         .slice(0, RESULTS_LIMIT)
         .map((dep) => {
           const planned = dep.plannedWhen || dep.when || null;
@@ -522,7 +594,7 @@
           const delay = typeof dep.delay === 'number' ? Math.round(dep.delay / 60) : 0;
           const rowClass = delay > 0 ? 'late' : (delay < 0 ? 'early' : '');
           const chipClass = delay > 0 ? 'late' : (delay < 0 ? 'early' : 'on-time');
-          const chipText = delay > 0 ? '+' + delay + ' min' : (delay < 0 ? delay + ' min' : 'puenktlich');
+          const chipText = delay > 0 ? '+' + delay + ' min' : (delay < 0 ? delay + ' min' : 'pünktlich');
 
           return {
             line: dep.line.name || '-',
@@ -540,7 +612,7 @@
     function renderDepartureRows(rows) {
       const tbody = document.getElementById('departureRows');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="4">Keine aktuellen Tram-Abfahrten gefunden.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4">Keine aktuellen Abfahrten gefunden.</td></tr>';
         document.getElementById('countsText').textContent = 'Abfahrten: 0 | pünktlich: 0 | verfrüht: 0 | verspätet: 0';
         return;
       }
@@ -577,13 +649,6 @@
         setStatus('Lade Abfahrten ...', 'warn');
         const data = await fetchFromBases('/stops/' + encodeURIComponent(selectedStop.id) + '/departures', {
           language: 'de',
-          tram: 'true',
-          suburban: 'false',
-          subway: 'false',
-          bus: 'false',
-          ferry: 'false',
-          express: 'false',
-          regional: 'false',
           remarks: 'false',
           duration: '120',
           results: String(RESULTS_LIMIT)
@@ -611,10 +676,11 @@
     function handleSetStop() {
       const resolved = tryResolveStopByInput();
       if (!resolved) {
-        setStatus('Keine passende Tram-Haltestelle gefunden. Bitte erst suchen.', 'err');
+        setStatus('Keine passende Haltestelle gefunden. Bitte erst suchen.', 'err');
         return;
       }
       setSelectedStop(resolved);
+      hideSuggestions();
     }
 
     function toggleAuto() {
@@ -634,14 +700,54 @@
       if (stationSearchTimer) {
         clearTimeout(stationSearchTimer);
       }
+      activeSuggestionIndex = -1;
       stationSearchTimer = setTimeout(() => {
         searchStops(query);
       }, 300);
     });
 
     document.getElementById('stopInput').addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActiveSuggestion(activeSuggestionIndex + 1);
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActiveSuggestion(activeSuggestionIndex - 1);
+        return;
+      }
+
       if (event.key === 'Enter') {
+        if (activeSuggestionIndex >= 0 && lastStopCandidates[activeSuggestionIndex]) {
+          event.preventDefault();
+          setSelectedStop(lastStopCandidates[activeSuggestionIndex]);
+          hideSuggestions();
+          return;
+        }
         handleSetStop();
+      }
+
+      if (event.key === 'Escape') {
+        hideSuggestions();
+      }
+    });
+
+    document.getElementById('stopSuggestions').addEventListener('click', (event) => {
+      const target = event.target.closest('[data-index]');
+      if (!target) return;
+      const index = Number(target.getAttribute('data-index'));
+      if (Number.isNaN(index) || !lastStopCandidates[index]) return;
+      setSelectedStop(lastStopCandidates[index]);
+      hideSuggestions();
+    });
+
+    document.addEventListener('click', (event) => {
+      const picker = document.querySelector('.stop-picker');
+      const suggestions = document.getElementById('stopSuggestions');
+      if (!picker.contains(event.target) && !suggestions.contains(event.target)) {
+        hideSuggestions();
       }
     });
 
@@ -665,6 +771,7 @@
       const defaultStop = lastStopCandidates.find((stop) => stop.name.toLowerCase().includes('alexanderplatz')) || lastStopCandidates[0];
       if (defaultStop) {
         setSelectedStop(defaultStop);
+        hideSuggestions();
       } else {
         setStatus('Bitte eine Haltestelle eingeben und setzen.', 'warn');
       }
