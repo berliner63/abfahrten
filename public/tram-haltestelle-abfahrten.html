@@ -470,6 +470,7 @@
       'https://v6.db.transport.rest'
     ];
     const DEFAULT_RESULTS_LIMIT = 24;
+    const STORAGE_SELECTED_STOP = 'abfahrtenSelectedStop';
 
     let autoEnabled = true;
     let autoTimer = null;
@@ -502,6 +503,33 @@
       const el = document.getElementById('statusText');
       el.textContent = 'Status: ' + text;
       el.className = 'status-inline ' + (cls || '');
+    }
+
+    function saveSelectedStop(stop) {
+      try {
+        if (!stop || !stop.id) return;
+        localStorage.setItem(STORAGE_SELECTED_STOP, JSON.stringify({
+          id: String(stop.id),
+          name: cleanDisplayName(stop.name || '-')
+        }));
+      } catch (_) {
+        // localStorage is optional; ignore when unavailable.
+      }
+    }
+
+    function getStoredSelectedStop() {
+      try {
+        const raw = localStorage.getItem(STORAGE_SELECTED_STOP);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !parsed.id) return null;
+        return {
+          id: String(parsed.id),
+          name: cleanDisplayName(parsed.name || '-')
+        };
+      } catch (_) {
+        return null;
+      }
     }
 
     function isDepartureVisibleByProduct(dep) {
@@ -754,6 +782,7 @@
       selectedStop = stop;
       const stopName = cleanDisplayName(stop && stop.name ? stop.name : '-');
       document.getElementById('stopInput').value = stopName;
+      saveSelectedStop({ id: stop.id, name: stopName });
       loadDepartures();
     }
 
@@ -868,18 +897,24 @@
     updateOrientationHint();
     autoTimer = setInterval(loadDepartures, 60000);
 
-    // Initiale Vorschlaege laden, damit direkt Haltestellen ausgewaehlt werden koennen.
-    searchStops('Alexanderplatz').then(() => {
-      const defaultStop = lastStopCandidates.find((stop) => stop.name.toLowerCase().includes('alexanderplatz')) || lastStopCandidates[0];
-      if (defaultStop) {
-        setSelectedStop(defaultStop);
-        hideSuggestions();
-      } else {
+    const storedStop = getStoredSelectedStop();
+    if (storedStop) {
+      setSelectedStop(storedStop);
+      hideSuggestions();
+    } else {
+      // Initiale Vorschlaege laden, damit direkt Haltestellen ausgewaehlt werden koennen.
+      searchStops('Alexanderplatz').then(() => {
+        const defaultStop = lastStopCandidates.find((stop) => stop.name.toLowerCase().includes('alexanderplatz')) || lastStopCandidates[0];
+        if (defaultStop) {
+          setSelectedStop(defaultStop);
+          hideSuggestions();
+        } else {
+          setStatus('Bitte eine Haltestelle eingeben und setzen.', 'warn');
+        }
+      }).catch(() => {
         setStatus('Bitte eine Haltestelle eingeben und setzen.', 'warn');
-      }
-    }).catch(() => {
-      setStatus('Bitte eine Haltestelle eingeben und setzen.', 'warn');
-    });
+      });
+    }
   </script>
 </body>
 </html>
