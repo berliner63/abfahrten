@@ -372,7 +372,7 @@
       <div class="extra-controls">
         <div class="results-config">
           <label for="resultsInput">Anzahl Fahrten:</label>
-          <input id="resultsInput" type="number" min="1" max="60" step="1" value="24">
+          <input id="resultsInput" type="number" min="1" max="60" step="1" value="10">
         </div>
         <div class="mode-filter" id="modeFilter">
           <span class="mode-filter-label">Ausblenden:</span>
@@ -446,7 +446,7 @@
       'https://v6.bvg.transport.rest',
       'https://v6.db.transport.rest'
     ];
-    const DEFAULT_RESULTS_LIMIT = 24;
+    const DEFAULT_RESULTS_LIMIT = 10;
     const STORAGE_SELECTED_STOP = 'abfahrtenSelectedStop';
 
     let autoEnabled = true;
