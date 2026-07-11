@@ -323,7 +323,6 @@
 <body>
   <div class="wrap">
     <div class="header-line">
-      <h1>Abfahrten nach Haltestelle</h1>
       <div class="sub">Live-Übersicht der nächsten Abfahrten für eine ausgewählte Haltestelle.</div>
     </div>
 
@@ -622,11 +621,12 @@
 
       tbody.innerHTML = rows.map((row) => {
         const realtimeHint = row.hasRealtime ? '' : '<span class="realtime-missing">---</span>';
+        const delayChip = row.hasRealtime ? '<span class="delay-chip ' + row.chipClass + '">' + row.chipText + '</span>' : '';
         return '<tr class="' + row.rowClass + '">' +
           '<td>' + row.line + '</td>' +
           '<td>' + row.direction + '</td>' +
           '<td>' + formatTime(row.planned) + '</td>' +
-          '<td><span class="ist-time">' + formatTime(row.actual) + '</span>' + realtimeHint + '<span class="delay-chip ' + row.chipClass + '">' + row.chipText + '</span></td>' +
+          '<td><span class="ist-time">' + formatTime(row.actual) + '</span>' + realtimeHint + delayChip + '</td>' +
           '</tr>';
       }).join('');
     }
