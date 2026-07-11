@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
   <style>
+    :root { --font-scale: 1.5; }
     html { -webkit-text-size-adjust: 100%; }
     body {
       margin: 0;
@@ -18,6 +19,7 @@
       background: #000;
       color: #fff;
       font-family: 'Roboto Condensed', sans-serif;
+      font-size: calc(14px * var(--font-scale));
     }
     .wrap {
       width: 100%;
@@ -33,12 +35,12 @@
     }
     h1 {
       margin: 0;
-      font-size: 28px;
+      font-size: calc(28px * var(--font-scale));
       line-height: 1.1;
     }
     .sub {
       color: #aaa;
-      font-size: 14px;
+      font-size: calc(14px * var(--font-scale));
       margin: 0;
     }
     .panel {
@@ -54,7 +56,7 @@
       align-items: center;
     }
     .status-inline {
-      font-size: 16px;
+      font-size: calc(16px * var(--font-scale));
       margin-left: 4px;
     }
     .stop-picker {
@@ -66,19 +68,73 @@
       position: relative;
     }
     .stop-picker label {
-      font-size: 14px;
+      font-size: calc(14px * var(--font-scale));
       color: #d0d0d0;
       white-space: nowrap;
     }
     .stop-picker input {
       font-family: 'Roboto Condensed', sans-serif;
-      font-size: 14px;
+      font-size: calc(14px * var(--font-scale));
       background: #111;
       color: #fff;
       border: 1px solid #333;
       padding: 6px 8px;
       min-width: 240px;
       flex: 1;
+    }
+    .extra-controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .results-config {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .results-config label {
+      font-size: calc(14px * var(--font-scale));
+      color: #d0d0d0;
+      white-space: nowrap;
+    }
+    .results-config input {
+      width: 88px;
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: calc(14px * var(--font-scale));
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 6px 8px;
+    }
+    .mode-filter {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .mode-filter-label {
+      font-size: calc(14px * var(--font-scale));
+      color: #d0d0d0;
+      margin-right: 2px;
+    }
+    .mode-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #333;
+      background: #111;
+      padding: 4px 8px;
+      font-size: calc(13px * var(--font-scale));
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+    }
+    .mode-pill input {
+      margin: 0;
+      width: 14px;
+      height: 14px;
     }
     .stop-picker input::placeholder {
       color: #888;
@@ -105,7 +161,7 @@
       border-bottom: 1px solid #222;
       padding: 8px 10px;
       font-family: 'Roboto Condensed', sans-serif;
-      font-size: 14px;
+      font-size: calc(14px * var(--font-scale));
       cursor: pointer;
     }
     .stop-suggestion-item:last-child {
@@ -126,7 +182,7 @@
       border: 1px solid #f9a825;
       background: rgba(17, 17, 17, 0.96);
       color: #ffd54f;
-      font-size: 15px;
+      font-size: calc(15px * var(--font-scale));
       line-height: 1.35;
       text-align: center;
       opacity: 0;
@@ -138,7 +194,7 @@
     }
     button {
       font-family: 'Roboto Condensed', sans-serif;
-      font-size: 14px;
+      font-size: calc(14px * var(--font-scale));
       background: #111;
       color: #fff;
       border: 1px solid #333;
@@ -150,13 +206,13 @@
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
-      font-size: 14px;
+      font-size: calc(14px * var(--font-scale));
       color: #c2c2c2;
       margin-top: 10px;
       align-items: baseline;
     }
     #statusText {
-      font-size: 18px;
+      font-size: calc(18px * var(--font-scale));
     }
     .count-late {
       color: #ffd54f;
@@ -177,7 +233,7 @@
     }
     .table-title {
       margin: 0 0 8px 0;
-      font-size: 22px;
+      font-size: calc(22px * var(--font-scale));
       line-height: 1.2;
     }
     th, td {
@@ -201,7 +257,7 @@
       display: inline-block;
       margin-left: 6px;
       color: #9a9a9a;
-      font-size: 13px;
+      font-size: calc(13px * var(--font-scale));
       line-height: 1.3;
     }
     .delay-chip {
@@ -209,7 +265,7 @@
       margin-left: 8px;
       padding: 1px 6px;
       border: 1px solid #333;
-      font-size: 13px;
+      font-size: calc(13px * var(--font-scale));
       line-height: 1.3;
     }
     .delay-chip.late {
@@ -226,7 +282,7 @@
     }
     .note {
       color: #9a9a9a;
-      font-size: 13px;
+      font-size: calc(13px * var(--font-scale));
       margin-top: 10px;
     }
     .note a { color: #a0a0a0; cursor: pointer; text-decoration: underline; }
@@ -260,7 +316,7 @@
       box-sizing: border-box;
     }
     .modal-header {
-      font-size: 18px;
+      font-size: calc(18px * var(--font-scale));
       font-weight: bold;
       margin-bottom: 16px;
       display: flex;
@@ -271,7 +327,7 @@
       background: none;
       border: none;
       color: #fff;
-      font-size: 24px;
+      font-size: calc(24px * var(--font-scale));
       cursor: pointer;
       padding: 0;
       width: 30px;
@@ -285,13 +341,13 @@
       background: none;
     }
     .modal-content h5 {
-      font-size: 14px;
+      font-size: calc(14px * var(--font-scale));
       font-weight: bold;
       margin: 12px 0 8px 0;
       color: #e0e0e0;
     }
     .modal-content p {
-      font-size: 13px;
+      font-size: calc(13px * var(--font-scale));
       margin: 8px 0;
       line-height: 1.5;
       color: #ccc;
@@ -309,6 +365,10 @@
       th, td { font-size: 14px; }
       #statusText,
       .status-inline { font-size: 16px; }
+      .extra-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
       .stop-picker {
         flex-direction: column;
         align-items: stretch;
@@ -322,10 +382,6 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="header-line">
-      <div class="sub">Live-Übersicht der nächsten Abfahrten für eine ausgewählte Haltestelle.</div>
-    </div>
-
     <div class="panel">
       <div class="stop-picker">
         <label for="stopInput">Haltestelle:</label>
@@ -334,6 +390,23 @@
         <button id="selectStopBtn" type="button">Haltestelle setzen</button>
       </div>
       <div id="stopSuggestions" class="stop-suggestions"></div>
+      <div class="extra-controls">
+        <div class="results-config">
+          <label for="resultsInput">Anzahl Fahrten:</label>
+          <input id="resultsInput" type="number" min="1" max="60" step="1" value="24">
+        </div>
+        <div class="mode-filter" id="modeFilter">
+          <span class="mode-filter-label">Ausblenden:</span>
+          <label class="mode-pill"><input type="checkbox" data-product="suburban" checked> S</label>
+          <label class="mode-pill"><input type="checkbox" data-product="subway" checked> U</label>
+          <label class="mode-pill"><input type="checkbox" data-product="tram" checked> Tram</label>
+          <label class="mode-pill"><input type="checkbox" data-product="bus" checked> Bus</label>
+          <label class="mode-pill"><input type="checkbox" data-product="ferry" checked> Faehre</label>
+          <label class="mode-pill"><input type="checkbox" data-product="express" checked> Express</label>
+          <label class="mode-pill"><input type="checkbox" data-product="regional" checked> Regional</label>
+          <label class="mode-pill"><input type="checkbox" data-product="other" checked> Sonstige</label>
+        </div>
+      </div>
       <div class="controls">
         <button id="refreshBtn" type="button">Jetzt aktualisieren</button>
         <button id="toggleAutoBtn" type="button">Auto: an</button>
@@ -396,7 +469,7 @@
       'https://v6.bvg.transport.rest',
       'https://v6.db.transport.rest'
     ];
-    const RESULTS_LIMIT = 24;
+    const DEFAULT_RESULTS_LIMIT = 24;
 
     let autoEnabled = true;
     let autoTimer = null;
@@ -405,6 +478,17 @@
     let stationSearchTimer = null;
     let lastStopCandidates = [];
     let activeSuggestionIndex = -1;
+    let resultsLimit = DEFAULT_RESULTS_LIMIT;
+    const visibleProducts = {
+      suburban: true,
+      subway: true,
+      tram: true,
+      bus: true,
+      ferry: true,
+      express: true,
+      regional: true,
+      other: true
+    };
 
     function openImpressum() {
       document.getElementById('impressumModal').classList.add('visible');
@@ -417,7 +501,16 @@
     function setStatus(text, cls) {
       const el = document.getElementById('statusText');
       el.textContent = 'Status: ' + text;
-      el.className = cls || '';
+      el.className = 'status-inline ' + (cls || '');
+    }
+
+    function isDepartureVisibleByProduct(dep) {
+      const product = dep && dep.line ? dep.line.product : null;
+      if (!product) return !!visibleProducts.other;
+      if (Object.prototype.hasOwnProperty.call(visibleProducts, product)) {
+        return !!visibleProducts[product];
+      }
+      return !!visibleProducts.other;
     }
 
     function formatTime(value) {
@@ -588,7 +681,8 @@
     function normalizeDepartureRows(departures) {
       return departures
         .filter((dep) => dep && dep.line)
-        .slice(0, RESULTS_LIMIT)
+        .filter((dep) => isDepartureVisibleByProduct(dep))
+        .slice(0, resultsLimit)
         .map((dep) => {
           const planned = dep.plannedWhen || dep.when || null;
           const actual = dep.when || dep.plannedWhen || null;
@@ -643,7 +737,7 @@
           language: 'de',
           remarks: 'false',
           duration: '120',
-          results: String(RESULTS_LIMIT)
+          results: String(Math.min(Math.max(resultsLimit * 3, resultsLimit), 200))
         });
 
         const departures = Array.isArray(data.departures) ? data.departures : [];
@@ -744,6 +838,24 @@
     document.getElementById('selectStopBtn').addEventListener('click', handleSetStop);
     document.getElementById('refreshBtn').addEventListener('click', loadDepartures);
     document.getElementById('toggleAutoBtn').addEventListener('click', toggleAuto);
+    document.getElementById('resultsInput').addEventListener('change', (event) => {
+      const parsed = Number(event.target.value);
+      if (!Number.isFinite(parsed)) {
+        event.target.value = String(resultsLimit);
+        return;
+      }
+      resultsLimit = Math.min(60, Math.max(1, Math.round(parsed)));
+      event.target.value = String(resultsLimit);
+      loadDepartures();
+    });
+    document.querySelectorAll('#modeFilter input[type="checkbox"]').forEach((el) => {
+      el.addEventListener('change', (event) => {
+        const key = event.target.getAttribute('data-product');
+        if (!key) return;
+        visibleProducts[key] = !!event.target.checked;
+        loadDepartures();
+      });
+    });
     document.getElementById('impressumModal').addEventListener('click', (e) => {
       if (e.target.id === 'impressumModal') {
         closeImpressum();
