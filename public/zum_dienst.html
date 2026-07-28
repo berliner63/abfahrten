@@ -15,7 +15,7 @@
       --error: #ef9a9a;
       --radius: 10px;
       --fs-ticker: 24px;
-      --ticker-duration: 15s;
+      --ticker-duration: 8s;
     }
 
     * { box-sizing: border-box; }
@@ -60,12 +60,13 @@
       width: max-content;
       animation: ticker-scroll var(--ticker-duration) linear infinite;
       will-change: transform;
+      transform: translate3d(0,0,0);
     }
 
     .ticker-chunk {
       display: inline-flex;
       align-items: center;
-      padding-right: 48px;
+      padding-right: 24px;
     }
 
     .item {
