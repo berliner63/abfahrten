@@ -217,7 +217,7 @@ const DepartureTable = (props) => {
             </Row>
             {remarkText && props.remarksVisibility && (
               <Marquee
-                speed={30}
+                speed={45}
                 play={!isPaused}
                 style={styles.marquee}
                 onMouseEnter={() => setIsPaused(true)}
@@ -272,7 +272,7 @@ const DepartureTable = (props) => {
             </Row>
             {remarkText && props.remarksVisibility && (
               <Marquee
-                speed={30}
+                speed={37.5}
                 play={!isPaused}
                 style={styles.marquee}
                 onMouseEnter={() => setIsPaused(true)}
