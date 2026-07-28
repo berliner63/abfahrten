@@ -339,7 +339,7 @@
         .map(dep => `${dep?.line?.name || ""} -> ${dep?.direction || ""} ${formatTime(dep?.when || dep?.plannedWhen)} Uhr`)
         .join(" ")
         .length;
-      const duration = Math.max(20, Math.min(90, Math.round(plainLength / 3.5)));
+      const duration = Math.max(8, Math.min(40, Math.round(plainLength / 8)));
       const track = document.getElementById("tickerTrack");
       track.style.setProperty("--ticker-duration", `${duration}s`);
       hasRenderedData = true;
