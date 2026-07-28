@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Abfahrten U Hellersdorf</title>
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="shortcut icon" href="./logo.png">
+  <link rel="apple-touch-icon" href="./logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #000;
+      --panel: #111;
+      --line: #2a2a2a;
+      --text: #fff;
+      --muted: #b8b8b8;
+      --late: #f9a825;
+      --early: #c62828;
+      --ok: #8bc34a;
+      --radius: 8px;
+      --font-scale: 1.5;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Roboto Condensed', sans-serif;
+      font-size: calc(14px * var(--font-scale));
+      padding: 12px;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+    }
+
+    .header {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: calc(30px * var(--font-scale));
+      line-height: 1.05;
+    }
+
+    .sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: calc(14px * var(--font-scale));
+      line-height: 1.35;
+    }
+
+    .meta {
+      padding: 10px 18px 14px;
+      color: var(--muted);
+      font-size: calc(13px * var(--font-scale));
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .meta strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: calc(13px * var(--font-scale));
+      line-height: 1.35;
+      padding: 10px 18px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #000;
+    }
+
+    th, td {
+      border-top: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+      font-size: calc(14px * var(--font-scale));
+    }
+
+    th:last-child, td:last-child { border-right: none; }
+    thead th {
+      background: #0f0f0f;
+      color: #eaeaea;
+      font-weight: 700;
+      border-top: none;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #0d0d0d;
+    }
+
+    tbody tr.late { border-left: 4px solid var(--late); }
+    tbody tr.early { border-left: 4px solid var(--early); }
+
+    th:nth-child(1), td:nth-child(1),
+    th:nth-child(3), td:nth-child(3),
+    th:nth-child(4), td:nth-child(4) {
+      white-space: nowrap;
+      width: 1%;
+    }
+
+    .ist-time { display: inline; }
+    .realtime-missing,
+    .delay-chip {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 1px 6px;
+      border: 1px solid var(--line);
+      line-height: 1.25;
+      font-size: calc(12px * var(--font-scale));
+      vertical-align: baseline;
+    }
+
+    .delay-chip.late {
+      color: var(--late);
+      border-color: var(--late);
+    }
+
+    .delay-chip.early {
+      color: var(--early);
+      border-color: var(--early);
+    }
+
+    .delay-chip.on-time {
+      color: var(--ok);
+      border-color: var(--ok);
+    }
+
+    .realtime-missing {
+      color: var(--muted);
+      border-color: #555;
+    }
+
+    .note {
+      padding: 12px 18px 16px;
+      color: var(--muted);
+      font-size: calc(12px * var(--font-scale));
+      border-top: 1px solid var(--line);
+    }
+
+    .note a {
+      color: #a0a0a0;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .note a:hover { color: #ccc; }
+
+    .err,
+    .empty {
+      padding: 18px;
+      color: var(--muted);
+      font-size: calc(14px * var(--font-scale));
+    }
+
+    .err { color: #ef9a9a; }
+
+    @media (max-width: 1024px), (pointer: coarse) {
+      body { padding: 8px; }
+      .header { padding: 14px 14px 10px; }
+      .meta { padding: 8px 14px 12px; }
+      .status { padding: 10px 14px 0; }
+      .note { padding: 10px 14px 14px; }
+      h1 { font-size: calc(22px * var(--font-scale)); }
+      .sub { font-size: calc(12px * var(--font-scale)); }
+      th, td { font-size: calc(12px * var(--font-scale)); padding: 9px 10px; }
+      .delay-chip,
+      .realtime-missing { font-size: 10px; }
+      th:nth-child(2), td:nth-child(2) { word-break: break-word; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="panel" aria-live="polite">
+      <div class="header">
+        <h1>U Hellersdorf</h1>
+        <div class="sub">Feste Anzeige der nächsten 10 Abfahrten mit allen Verkehrsmitteln.</div>
+      </div>
+      <div id="status" class="status">Status: wird geladen ...</div>
+      <div id="content"><div class="empty">Lade Abfahrten &hellip;</div></div>
+      <div class="note">Quelle: - | automatische Aktualisierung alle 60 Sekunden | <a onclick="openImpressum()">Impressum</a></div>
+    </main>
+
+    <div class="modal-overlay" id="impressumModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;justify-content:center;align-items:flex-start;padding-top:40px;">
+      <div style="background:#111;color:#fff;border:1px solid #333;border-radius:6px;width:min(90vw,600px);max-height:80vh;overflow:auto;padding:24px;box-sizing:border-box;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:18px;font-weight:700;margin-bottom:16px;">
+          <span>Impressum</span>
+          <button type="button" onclick="closeImpressum()" style="background:none;border:none;color:#fff;font-size:28px;cursor:pointer;line-height:1;padding:0;width:30px;height:30px;">&times;</button>
+        </div>
+        <p style="font-size:13px;line-height:1.5;color:#ccc;"><b>Verantwortlich für diese Website:</b><br>Andreas Kuhl<br>E-Mail: <a href="mailto:andreas.kuhl@magenta.de" style="color:#64b5f6;">andreas.kuhl@magenta.de</a></p>
+        <p style="font-size:13px;line-height:1.5;color:#ccc;">Diese Seite nutzt transport.rest APIs zur Anzeige von Fahrplandaten. Es handelt sich um ein privates Projekt.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STOP_ID = '900175007';
+    const STOP_NAME = 'U Hellersdorf';
+    const MAX_RESULTS = 10;
+    const REFRESH_MS = 60000;
+    const REQUEST_TIMEOUT_MS = 15000;
+    const API_BASES = [
+      'https://v6.vbb.transport.rest',
+      'https://v6.bvg.transport.rest',
+      'https://v6.db.transport.rest'
+    ];
+
+    let refreshTimer = null;
+
+    function openImpressum() {
+      document.getElementById('impressumModal').style.display = 'flex';
+    }
+
+    function closeImpressum() {
+      document.getElementById('impressumModal').style.display = 'none';
+    }
+
+    function setStatus(text, className) {
+      const el = document.getElementById('status');
+      el.textContent = 'Status: ' + text;
+      el.className = 'status' + (className ? ' ' + className : '');
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatTime(value) {
+      if (!value) return '--:--';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '--:--';
+      return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function getDelayInfo(dep) {
+      const planned = dep && dep.plannedWhen ? new Date(dep.plannedWhen) : null;
+      const actual = dep && dep.when ? new Date(dep.when) : null;
+      if (planned && actual && !Number.isNaN(planned.getTime()) && !Number.isNaN(actual.getTime())) {
+        const diff = Math.round((actual.getTime() - planned.getTime()) / 60000);
+        if (diff < 0) return { hasRealtime: true, delay: diff, label: String(diff), type: 'early' };
+        if (diff > 0) return { hasRealtime: true, delay: diff, label: '+' + diff, type: 'late' };
+        return { hasRealtime: true, delay: 0, label: 'pünktlich', type: 'on-time' };
+      }
+
+      if (typeof dep?.delay === 'number' && Number.isFinite(dep.delay)) {
+        const diff = Math.round(dep.delay / 60);
+        if (diff < 0) return { hasRealtime: true, delay: diff, label: String(diff), type: 'early' };
+        if (diff > 0) return { hasRealtime: true, delay: diff, label: '+' + diff, type: 'late' };
+        return { hasRealtime: true, delay: 0, label: 'pünktlich', type: 'on-time' };
+      }
+
+      return { hasRealtime: false, delay: null, label: '---', type: 'unknown' };
+    }
+
+    function normalizeDeparture(dep) {
+      const line = dep && dep.line && dep.line.name ? dep.line.name : '-';
+      const destination = dep && dep.direction ? dep.direction : (dep && dep.destination ? dep.destination : '-');
+      const planned = dep ? (dep.plannedWhen || dep.plannedDeparture || dep.when || dep.departure || null) : null;
+      const actual = dep ? (dep.when || dep.departure || dep.arrival || dep.plannedWhen || dep.plannedDeparture || null) : null;
+      const delayInfo = getDelayInfo(dep);
+      return {
+        line,
+        destination,
+        planned,
+        actual,
+        delayInfo,
+        rowClass: delayInfo.type === 'late' ? 'late' : (delayInfo.type === 'early' ? 'early' : '')
+      };
+    }
+
+    function renderRows(departures) {
+      const content = document.getElementById('content');
+      if (!departures.length) {
+        content.innerHTML = '<div class="empty">Keine aktuellen Abfahrten gefunden.</div>';
+        return;
+      }
+
+      const rows = departures.map((dep) => {
+        const realtime = dep.delayInfo.hasRealtime
+          ? '<span class="delay-chip ' + dep.delayInfo.type + '">' + escapeHtml(dep.delayInfo.label) + '</span>'
+          : '<span class="realtime-missing">---</span>';
+
+        return '<tr class="' + dep.rowClass + '">' +
+          '<td>' + escapeHtml(dep.line) + '</td>' +
+          '<td>' + escapeHtml(dep.destination || '-') + '</td>' +
+          '<td>' + escapeHtml(formatTime(dep.planned)) + '</td>' +
+          '<td><span class="ist-time">' + escapeHtml(formatTime(dep.actual)) + '</span>' + realtime + '</td>' +
+          '</tr>';
+      }).join('');
+
+      content.innerHTML = '<table>' +
+        '<thead><tr><th>Linie</th><th>Ziel</th><th>Soll</th><th>Ist</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+        '</table>';
+    }
+
+    async function fetchJsonWithTimeout(url) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) {
+          throw new Error('HTTP ' + response.status);
+        }
+        return await response.json();
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    async function fetchDepartures() {
+      const params = new URLSearchParams({
+        language: 'de',
+        results: String(MAX_RESULTS),
+        duration: '120',
+        suburban: 'true',
+        subway: 'true',
+        tram: 'true',
+        bus: 'true',
+        ferry: 'true',
+        express: 'true',
+        regional: 'true',
+        remarks: 'false'
+      });
+
+      let lastError = null;
+      for (const base of API_BASES) {
+        try {
+          const data = await fetchJsonWithTimeout(base + '/stops/' + encodeURIComponent(STOP_ID) + '/departures?' + params.toString());
+          document.querySelector('.note').innerHTML = 'Quelle: ' + base + '/stops/' + STOP_ID + '/departures | automatische Aktualisierung alle 60 Sekunden | <a onclick="openImpressum()">Impressum</a>';
+          return Array.isArray(data && data.departures) ? data.departures.map(normalizeDeparture).slice(0, MAX_RESULTS) : [];
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error('API nicht erreichbar');
+    }
+
+    async function load() {
+      try {
+        setStatus('lädt Abfahrten ...', '');
+        const departures = await fetchDepartures();
+        renderRows(departures);
+        setStatus('aktualisiert ' + new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), 'ok');
+      } catch (error) {
+        document.getElementById('content').innerHTML = '<div class="err">Fehler beim Laden der Daten.</div>';
+        setStatus('Fehler: ' + (error && error.message ? error.message : 'unbekannt'), 'err');
+      }
+    }
+
+    document.getElementById('impressumModal').addEventListener('click', (event) => {
+      if (event.target && event.target.id === 'impressumModal') {
+        closeImpressum();
+      }
+    });
+
+    load();
+    refreshTimer = setInterval(load, REFRESH_MS);
+  </script>
+</body>
+</html>
