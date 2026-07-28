@@ -15,7 +15,7 @@
       --error: #ef9a9a;
       --radius: 10px;
       --fs-ticker: 24px;
-      --ticker-duration: 15s;
+      --ticker-duration: 12s;
     }
 
     * { box-sizing: border-box; }
@@ -319,7 +319,7 @@
         .map(dep => `${dep?.line?.name || ""} -> ${dep?.direction || ""} ${formatTime(dep?.when || dep?.plannedWhen)} Uhr`)
         .join(" ")
         .length;
-      const duration = Math.max(8, Math.min(40, Math.round(plainLength / 8)));
+      const duration = Math.max(6, Math.min(30, Math.round(plainLength / 10)));
       const track = document.getElementById("tickerTrack");
       track.style.setProperty("--ticker-duration", `${duration}s`);
       hasRenderedData = true;
