@@ -95,14 +95,18 @@
       font-size: clamp(20px, 2vw, 30px);
       padding: 16px 12px;
       border-bottom: 1px solid var(--line);
-      border-left: 1px solid var(--line);
-      border-right: 1px solid var(--line);
+      border-left: 1px solid rgba(255,255,255,0.14);
+      border-right: 1px solid rgba(255,255,255,0.14);
       vertical-align: middle;
       background: rgba(255,255,255,0.01);
     }
 
     tbody tr:nth-child(odd) td {
-      background: rgba(255,255,255,0.008);
+      background: rgba(255,255,255,0.02);
+    }
+
+    tbody tr:nth-child(even) td {
+      background: rgba(80, 80, 80, 0.18);
     }
 
     tbody tr.late td {
