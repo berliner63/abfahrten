@@ -34,7 +34,7 @@
 
     .board {
       width: 100%;
-      max-width: 980px;
+      max-width: 850px;
       margin: 0 auto;
       padding: 0;
     }
@@ -55,12 +55,13 @@
     table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       background: #000;
     }
 
     th, td {
       border: 1px solid var(--line);
-      padding: 10px 12px;
+      padding: 10px 10px;
       text-align: left;
       vertical-align: middle;
       font-size: 17px;
@@ -73,6 +74,10 @@
       color: #fff;
       font-size: 17px;
     }
+
+    th:nth-child(1) { width: 12%; }
+    th:nth-child(2) { width: 44%; }
+    th:nth-child(3), th:nth-child(4) { width: 22%; }
 
     tr:nth-child(even) { background: var(--row-alt); }
     tr.late { border-left: 3px solid var(--late); }
