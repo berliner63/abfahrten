@@ -8,6 +8,7 @@
   <style>
     :root {
       --font-scale: 2.1;
+      --user-scale: 1;
       --bg: #000;
       --panel: #0d0d0d;
       --line: #333;
@@ -52,7 +53,7 @@
       padding: 8px 10px;
       text-align: left;
       vertical-align: middle;
-      font-size: 21px;
+      font-size: calc(21px * var(--user-scale));
       line-height: 1.2;
       color: #fff;
     }
@@ -60,7 +61,7 @@
     th {
       background: #111;
       font-weight: 700;
-      font-size: 21px;
+      font-size: calc(21px * var(--user-scale));
       text-align: left;
     }
 
@@ -130,8 +131,29 @@
 
     @media (max-width: 1024px), (pointer: coarse) {
       .title { font-size: 24px; }
-      th, td { font-size: 21px; }
+      th, td { font-size: calc(21px * var(--user-scale)); }
       .delay-chip { font-size: 12px; }
+    }
+
+    .font-controls {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 8px 0 0;
+    }
+
+    .font-controls button {
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 4px 12px;
+      font-size: 16px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .font-controls button:hover {
+      background: #222;
     }
   </style>
 </head>
@@ -152,6 +174,10 @@
         </tr>
       </tbody>
     </table>
+    <div class="font-controls">
+      <button type="button" id="font-dec" aria-label="Schrift verkleinern">A-</button>
+      <button type="button" id="font-inc" aria-label="Schrift vergrößern">A+</button>
+    </div>
   </main>
 
   <script>
@@ -318,6 +344,32 @@
 
     load();
     setInterval(load, REFRESH_MS);
+
+    const FONT_SCALE_KEY = "stqu-font-scale";
+    const FONT_SCALE_MIN = 0.6;
+    const FONT_SCALE_MAX = 2;
+    const FONT_SCALE_STEP = 0.1;
+
+    function applyFontScale(scale) {
+      document.documentElement.style.setProperty("--user-scale", scale);
+    }
+
+    function loadFontScale() {
+      const stored = Number(localStorage.getItem(FONT_SCALE_KEY));
+      const scale = Number.isFinite(stored) && stored > 0 ? stored : 1;
+      applyFontScale(scale);
+    }
+
+    function changeFontScale(delta) {
+      const current = Number(getComputedStyle(document.documentElement).getPropertyValue("--user-scale")) || 1;
+      const next = Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, Math.round((current + delta) * 10) / 10));
+      applyFontScale(next);
+      localStorage.setItem(FONT_SCALE_KEY, String(next));
+    }
+
+    document.getElementById("font-inc").addEventListener("click", () => changeFontScale(FONT_SCALE_STEP));
+    document.getElementById("font-dec").addEventListener("click", () => changeFontScale(-FONT_SCALE_STEP));
+    loadFontScale();
   </script>
 </body>
 </html>
