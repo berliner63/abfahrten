@@ -95,31 +95,19 @@
     .actual-time {
       display: inline-block;
       min-width: 3.1em;
+      color: #fff;
     }
 
-    .delay-chip {
-      display: inline-block;
-      margin-left: 8px;
-      padding: 1px 6px;
-      border: 1px solid #333;
-      font-size: 13px;
-      line-height: 1.3;
-      vertical-align: middle;
-    }
-
-    .delay-chip.late {
+    .actual-time.late {
       color: var(--late);
-      border-color: var(--late);
     }
 
-    .delay-chip.early {
+    .actual-time.early {
       color: var(--early);
-      border-color: var(--early);
     }
 
-    .delay-chip.on-time {
-      color: #bdbdbd;
-      border-color: #666;
+    .actual-time.ontime {
+      color: #fff;
     }
 
     .placeholder {
@@ -132,7 +120,6 @@
     @media (max-width: 1024px), (pointer: coarse) {
       .title { font-size: 24px; }
       th, td { font-size: calc(21px * var(--user-scale)); }
-      .delay-chip { font-size: 12px; }
     }
 
     .font-controls {
@@ -297,7 +284,6 @@
         const diffMinutes = getDelayMinutes(dep);
         const status = getStatusLabel(diffMinutes);
         const rowClass = status.type === "late" || status.type === "early" ? status.type : "ontime";
-        const chipText = status.type === "ontime" ? 'pünktlich' : `${status.text}`;
 
         return `
           <tr class="${rowClass}">
@@ -305,8 +291,7 @@
             <td class="destination-col">${target}</td>
             <td class="time-col">${planned}</td>
             <td class="actual-col">
-              <span class="actual-time">${actualTime}</span>
-              <span class="delay-chip ${status.type}">${escapeHtml(chipText)}</span>
+              <span class="actual-time ${status.type}">${actualTime}</span>
             </td>
           </tr>
         `;
