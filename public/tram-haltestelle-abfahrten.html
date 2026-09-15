@@ -558,6 +558,13 @@
         .replace(/'/g, '&#39;');
     }
 
+    function removeUrls(value) {
+      return String(value || '')
+        .replace(/https?:\/\/[^\s<]+/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+    }
+
     async function fetchFromBases(path, params) {
       let lastErr = null;
       for (const base of API_BASES) {
@@ -703,7 +710,7 @@
           const remarks = Array.isArray(dep.remarks)
             ? dep.remarks
               .filter((remark) => remark && (remark.type === 'warning' || remark.type === 'status'))
-              .map((remark) => String(remark.text || remark.summary || ''))
+              .map((remark) => removeUrls(remark.text || remark.summary || ''))
               .filter(Boolean)
             : [];
 
