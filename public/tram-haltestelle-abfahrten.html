@@ -560,7 +560,11 @@
 
     function removeUrls(value) {
       return String(value || '')
-        .replace(/https?:\/\/[^\s<]+/gi, '')
+        .replace(/<a\b[^>]*>[\s\S]*?<\/a>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/https?:\/\/[^\s<]+/gi, ' ')
+        .replace(/\[[^\]]*\]/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
         .replace(/\s{2,}/g, ' ')
         .trim();
     }
