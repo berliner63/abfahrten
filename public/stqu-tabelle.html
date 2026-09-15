@@ -170,9 +170,15 @@
   <script>
     const FROM_STOP = "900175011";
     const TO_STOP = "900170010";
-    const API_BASES = ["https://v6.vbb.transport.rest", "https://v6.bvg.transport.rest"];
+    const API_BASES = [
+      "https://v6.vbb.transport.rest",
+      "https://v6.bvg.transport.rest",
+      "https://v6.db.transport.rest"
+    ];
     const MAX_RESULTS = 5;
     const REFRESH_MS = 60000;
+    const REQUEST_TIMEOUT_MS = 10000;
+    const MAX_TRIP_CHECKS = 3;
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -218,15 +224,21 @@
       return { type: "ontime", text: "pünktlich" };
     }
 
-    async function fetchWithRetry(url, retries = 2) {
+    async function fetchWithRetry(url, retries = 1) {
       let lastError = null;
       for (let attempt = 0; attempt <= retries; attempt += 1) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
         try {
-          const res = await fetch(url, { cache: "no-store" });
+          const res = await fetch(url, { cache: "no-store", signal: controller.signal });
           if (res.ok) return res;
           lastError = new Error(`HTTP ${res.status}`);
         } catch (error) {
-          lastError = error;
+          lastError = error?.name === "AbortError"
+            ? new Error("Zeitüberschreitung")
+            : error;
+        } finally {
+          clearTimeout(timeout);
         }
       }
       throw lastError || new Error("Netzwerkfehler");
@@ -244,7 +256,7 @@
           // try next API base
         }
       }
-      return [];
+      throw new Error("API nicht erreichbar");
     }
 
     async function tripHasStop(tripId) {
@@ -300,20 +312,30 @@
       rows.innerHTML = html;
     }
 
+    async function filterDepartures(departures) {
+      const candidates = departures.slice(0, MAX_RESULTS * 4);
+      const matching = [];
+      let nextIndex = 0;
+
+      async function worker() {
+        while (nextIndex < candidates.length && matching.length < MAX_RESULTS) {
+          const departure = candidates[nextIndex];
+          nextIndex += 1;
+          if (await tripHasStop(departure?.tripId)) matching.push(departure);
+        }
+      }
+
+      await Promise.all(Array.from({ length: MAX_TRIP_CHECKS }, worker));
+      return matching;
+    }
+
     async function load() {
       const rows = document.getElementById("rows");
       rows.innerHTML = '<tr><td colspan="4" class="placeholder">Lade Abfahrten …</td></tr>';
 
       try {
         const departures = await fetchDepartures();
-        const filtered = [];
-
-        for (const dep of departures) {
-          if (filtered.length >= MAX_RESULTS) break;
-          if (await tripHasStop(dep?.tripId)) {
-            filtered.push(dep);
-          }
-        }
+        const filtered = await filterDepartures(departures);
 
         filtered.sort((a, b) => {
           const ta = new Date(a?.when || a?.plannedWhen || 0).getTime();
@@ -324,11 +346,12 @@
         renderRows(filtered.slice(0, MAX_RESULTS));
       } catch (error) {
         rows.innerHTML = `<tr><td colspan="4" class="placeholder">${escapeHtml(error?.message || "Unbekannter Fehler")}</td></tr>`;
+      } finally {
+        setTimeout(load, REFRESH_MS);
       }
     }
 
     load();
-    setInterval(load, REFRESH_MS);
 
     const FONT_SCALE_KEY = "stqu-font-scale";
     const FONT_SCALE_MIN = 0.6;
