@@ -110,6 +110,13 @@
       color: #fff;
     }
 
+    .remark-row td {
+      padding: 5px 10px 8px;
+      color: var(--warn);
+      font-size: calc(16px * var(--user-scale));
+      white-space: normal;
+    }
+
     .placeholder {
       color: var(--muted);
       text-align: center;
@@ -296,6 +303,15 @@
         const diffMinutes = getDelayMinutes(dep);
         const status = getStatusLabel(diffMinutes);
         const rowClass = status.type === "late" || status.type === "early" ? status.type : "ontime";
+        const remarks = Array.isArray(dep?.remarks)
+          ? dep.remarks
+            .filter(remark => remark?.type === "warning" || remark?.type === "status")
+            .map(remark => escapeHtml(remark.text || remark.summary || ""))
+            .filter(Boolean)
+          : [];
+        const remarksHtml = remarks.length
+          ? `<tr class="remark-row"><td colspan="4">${remarks.join("<br>")}</td></tr>`
+          : "";
 
         return `
           <tr class="${rowClass}">
@@ -306,6 +322,7 @@
               <span class="actual-time ${status.type}">${actualTime}</span>
             </td>
           </tr>
+          ${remarksHtml}
         `;
       }).join("");
 
