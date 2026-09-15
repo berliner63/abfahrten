@@ -455,9 +455,12 @@
     ];
     const DEFAULT_RESULTS_LIMIT = 10;
     const STORAGE_SELECTED_STOP = 'abfahrtenSelectedStop';
+    const REQUEST_TIMEOUT_MS = 10000;
+    const REQUEST_RETRIES = 1;
 
     let autoEnabled = true;
     let autoTimer = null;
+    let isLoadingDepartures = false;
     let selectedStop = null;
     let stationSearchTimer = null;
     let lastStopCandidates = [];
@@ -543,17 +546,25 @@
     async function fetchFromBases(path, params) {
       let lastErr = null;
       for (const base of API_BASES) {
-        try {
-          const url = base + path + '?' + new URLSearchParams(params).toString();
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error('HTTP ' + response.status + ' @ ' + base);
+        for (let attempt = 0; attempt <= REQUEST_RETRIES; attempt += 1) {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+          try {
+            const url = base + path + '?' + new URLSearchParams(params).toString();
+            const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+            if (!response.ok) {
+              throw new Error('HTTP ' + response.status + ' @ ' + base);
+            }
+            const data = await response.json();
+            document.getElementById('sourceText').innerHTML = 'Quelle: ' + base + path + ' | <a onclick="openImpressum()">Impressum</a>';
+            return data;
+          } catch (e) {
+            lastErr = e && e.name === 'AbortError'
+              ? new Error('Zeitüberschreitung @ ' + base)
+              : e;
+          } finally {
+            clearTimeout(timeout);
           }
-          const data = await response.json();
-          document.getElementById('sourceText').innerHTML = 'Quelle: ' + base + path + ' | <a onclick="openImpressum()">Impressum</a>';
-          return data;
-        } catch (e) {
-          lastErr = e;
         }
       }
       throw lastErr || new Error('API nicht erreichbar');
@@ -714,6 +725,9 @@
         return;
       }
 
+      if (isLoadingDepartures) return;
+      isLoadingDepartures = true;
+
       try {
         setStatus('Lade Abfahrten ...', 'warn');
         const data = await fetchFromBases('/stops/' + encodeURIComponent(selectedStop.id) + '/departures', {
@@ -730,6 +744,8 @@
       } catch (e) {
         setStatus('Fehler: ' + e.message, 'err');
         document.getElementById('departureRows').innerHTML = '<tr><td colspan="4">Fehler beim Laden der Daten.</td></tr>';
+      } finally {
+        isLoadingDepartures = false;
       }
     }
 
